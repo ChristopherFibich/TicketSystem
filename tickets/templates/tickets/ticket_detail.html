@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}Ticket{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1">{{ ticket.title }}</h1>
+      <div class="text-body-secondary">
+        Assigned to: <strong>{{ ticket.assignee|default:"(unassigned)" }}</strong>
+        {% if ticket.template %}
+          · Template: {{ ticket.template.title }}
+        {% endif %}
+      </div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'my_tickets' %}">Back</a>
+  </div>
+
+  <form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div class="mb-3">
+      <label class="form-label" for="id_title">Title</label>
+      {{ form.title }}
+      {{ form.title.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="id_description">Description</label>
+      {{ form.description }}
+      {{ form.description.errors }}
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-6 mb-3">
+        <label class="form-label" for="id_assignee">Assignee</label>
+        {{ form.assignee }}
+        {{ form.assignee.errors }}
+      </div>
+      <div class="col-12 col-md-6 mb-3">
+        <label class="form-label" for="id_status">Status</label>
+        {{ form.status }}
+        {{ form.status.errors }}
+      </div>
+    </div>
+
+    <div class="form-check mb-3">
+      {{ form.counts_for_score }}
+      <label class="form-check-label" for="id_counts_for_score">Counts for score</label>
+      {{ form.counts_for_score.errors }}
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Save</button>
+      {% if not completion %}
+        <button class="btn btn-success" type="submit" name="mark_done" value="1">Mark done (+points)</button>
+      {% endif %}
+    </div>
+
+    {% if completion %}
+      <hr />
+      <div class="text-body-secondary">
+        Completed by <strong>{{ completion.completed_by }}</strong>
+        on {{ completion.completed_at|date:"Y-m-d H:i" }}
+        · Points: <strong>{{ completion.points_awarded }}</strong>
+      </div>
+    {% endif %}
+  </form>
+{% endblock %}

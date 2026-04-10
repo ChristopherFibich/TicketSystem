@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./db:/data
+    environment:
+      DJANGO_DEBUG: "0"
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_TIME_ZONE: "Europe/Berlin"
+      DJANGO_SECRET_KEY: "change-me"
+      DJANGO_DB_PATH: "/data/db.sqlite3"
+    command: ["gunicorn", "householdtickets.wsgi:application", "--bind", "0.0.0.0:8000"]

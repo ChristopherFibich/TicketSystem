@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ user.username }}'s Tickets{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">{{ user.username }}'s Tickets</h1>
+    <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New ticket</a>
+  </div>
+
+  <ul class="nav nav-tabs" role="tablist">
+    {% for s in sections %}
+      <li class="nav-item" role="presentation">
+        <button
+          class="nav-link {% if forloop.first %}active{% endif %}"
+          id="tab-{{ s.status }}"
+          data-bs-toggle="tab"
+          data-bs-target="#pane-{{ s.status }}"
+          type="button"
+          role="tab"
+        >
+          {{ s.label }}
+          <span class="badge text-bg-secondary">{{ s.count }}</span>
+        </button>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <div class="tab-content pt-3">
+    {% for s in sections %}
+      <div
+        class="tab-pane fade {% if forloop.first %}show active{% endif %}"
+        id="pane-{{ s.status }}"
+        role="tabpanel"
+        aria-labelledby="tab-{{ s.status }}"
+      >
+        {% if s.tickets %}
+          <div class="list-group">
+            {% for t in s.tickets %}
+              <a class="list-group-item list-group-item-action {{ t.bg_class }}" href="{% url 'ticket_detail' t.pk %}">
+                <div class="d-flex w-100 justify-content-between">
+                  <div class="fw-semibold">{{ t.title }}</div>
+                  <small class="text-body-secondary">{{ t.created_at|date:"Y-m-d" }}</small>
+                </div>
+                {% if t.template %}
+                  <small class="text-body-secondary">Template: {{ t.template.title }}</small>
+                {% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-body-secondary">No tickets.</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Help{% endblock %}
+
+{% block content %}
+  <h1 class="h4 mb-3">Help</h1>
+
+  <div class="card card-body mb-3">
+    <div class="fw-semibold mb-2">Basics</div>
+    <ul class="mb-0">
+      <li><strong>{{ user.username }}</strong> is shown in the top bar.</li>
+      <li>Use <strong>{{ user.username }}'s Tickets</strong> to view what is assigned to you.</li>
+      <li>Tap a ticket to edit it, change status, or mark it done.</li>
+    </ul>
+  </div>
+
+  <div class="card card-body mb-3">
+    <div class="fw-semibold mb-2">Ticket status and scoring</div>
+    <ul class="mb-0">
+      <li><strong>Mark done (+points)</strong> creates a completion entry and updates the scoreboard.</li>
+      <li>If a ticket/template is set to <strong>Counts for score = off</strong>, it awards <strong>0 points</strong> (shown as “unscored”).</li>
+      <li>The scoreboard uses <strong>points</strong> (not number of tasks).</li>
+    </ul>
+  </div>
+
+  <div class="card card-body mb-3">
+    <div class="fw-semibold mb-2">Ticket colors</div>
+    <div class="text-body-secondary mb-2"><small>Blue means done; otherwise colors indicate how long it has been assigned.</small></div>
+    <ul class="mb-0">
+      <li><span class="badge text-bg-primary">Blue</span>: done</li>
+      <li><span class="badge text-bg-success">Green</span>: assigned for &lt; 1 day</li>
+      <li><span class="badge text-bg-warning">Yellow</span>: assigned for 1–5 days</li>
+      <li><span class="badge text-bg-danger">Red</span>: assigned for 5+ days</li>
+    </ul>
+  </div>
+
+  <div class="card card-body mb-3">
+    <div class="fw-semibold mb-2">Scoreboard</div>
+    <ul class="mb-0">
+      <li>Bar charts show points earned: <strong>today</strong>, <strong>last 7 days</strong>, <strong>last 30 days</strong>.</li>
+      <li>Use <strong>Details</strong> to expand a person’s completed ticket titles and points.</li>
+    </ul>
+  </div>
+
+  {% if user.is_superuser %}
+    <div class="card card-body mb-3">
+      <div class="fw-semibold mb-2">Admin / recurring templates (superusers)</div>
+      <ul class="mb-0">
+        <li>Go to <strong>/admin/</strong> to create users and recurring templates.</li>
+        <li>Create templates under <strong>Ticket templates</strong> (daily/weekly/monthly).</li>
+        <li>Assignment mode:
+          <ul>
+            <li><strong>Fixed</strong>: always assigned to a specific person.</li>
+            <li><strong>Eligible pool</strong>: assigned fairly based on lifetime points.</li>
+          </ul>
+        </li>
+        <li>After creating templates, run the spawner to generate tickets:
+          <ul>
+            <li><code>python manage.py spawn_recurring_tickets</code></li>
+          </ul>
+        </li>
+        <li><strong>All tickets</strong> shows every ticket and who it belongs to.</li>
+      </ul>
+    </div>
+  {% endif %}
+
+  <div class="text-body-secondary"><small>Tip: On phones, add the site to your home screen for quick access.</small></div>
+{% endblock %}

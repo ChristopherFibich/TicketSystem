@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Scoreboard{% endblock %}
+
+{% block content %}
+  <h1 class="h4 mb-3">Scoreboard</h1>
+
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-lg-4">
+      <div class="card card-body">
+        <div class="fw-semibold mb-2">Points — Today</div>
+        {% for r in rows %}
+          <div class="d-flex justify-content-between">
+            <small>{{ r.user.username }}</small>
+            <small class="text-body-secondary">{{ r.points_today }}</small>
+          </div>
+          <div class="progress mb-2" role="progressbar" aria-label="{{ r.user.username }} today" aria-valuenow="{{ r.points_today }}" aria-valuemin="0" aria-valuemax="{{ charts.today.max }}">
+            <div class="progress-bar" style="width: {{ r.pct_today }}%"></div>
+          </div>
+        {% endfor %}
+        <div class="text-body-secondary"><small>Max: {{ charts.today.max }}</small></div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card card-body">
+        <div class="fw-semibold mb-2">Points — Last 7 days</div>
+        {% for r in rows %}
+          <div class="d-flex justify-content-between">
+            <small>{{ r.user.username }}</small>
+            <small class="text-body-secondary">{{ r.points_7d }}</small>
+          </div>
+          <div class="progress mb-2" role="progressbar" aria-label="{{ r.user.username }} last 7 days" aria-valuenow="{{ r.points_7d }}" aria-valuemin="0" aria-valuemax="{{ charts.week.max }}">
+            <div class="progress-bar" style="width: {{ r.pct_7d }}%"></div>
+          </div>
+        {% endfor %}
+        <div class="text-body-secondary"><small>Max: {{ charts.week.max }}</small></div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card card-body">
+        <div class="fw-semibold mb-2">Points — Last 30 days</div>
+        {% for r in rows %}
+          <div class="d-flex justify-content-between">
+            <small>{{ r.user.username }}</small>
+            <small class="text-body-secondary">{{ r.points_30d_window }}</small>
+          </div>
+          <div class="progress mb-2" role="progressbar" aria-label="{{ r.user.username }} last 30 days" aria-valuenow="{{ r.points_30d_window }}" aria-valuemin="0" aria-valuemax="{{ charts.month.max }}">
+            <div class="progress-bar" style="width: {{ r.pct_30d }}%"></div>
+          </div>
+        {% endfor %}
+        <div class="text-body-secondary"><small>Max: {{ charts.month.max }}</small></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>Person</th>
+          <th class="text-end">Points</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="fw-semibold">{{ r.user.username }}</td>
+            <td class="text-end">{{ r.points_total }}</td>
+            <td class="text-end">
+              <button
+                class="btn btn-outline-secondary btn-sm"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#done-{{ forloop.counter }}"
+                aria-expanded="false"
+                aria-controls="done-{{ forloop.counter }}"
+              >
+                Details
+              </button>
+            </td>
+          </tr>
+          <tr class="collapse" id="done-{{ forloop.counter }}">
+            <td colspan="3">
+              <div class="d-flex flex-wrap gap-3 mb-2">
+                <div><small class="text-body-secondary">Points (30d):</small> <small class="fw-semibold">{{ r.points_30d }}</small></div>
+                <div>
+                  <small class="text-body-secondary">Avg time:</small>
+                  <small class="fw-semibold">
+                    {% if r.avg_seconds %}{{ r.avg_seconds|floatformat:0 }}s{% else %}—{% endif %}
+                  </small>
+                </div>
+              </div>
+
+              {% if r.done_items %}
+                <div class="list-group">
+                  {% for item in r.done_items %}
+                    <div class="list-group-item py-2">
+                      <div class="d-flex justify-content-between">
+                        <div class="fw-semibold">{{ item.title }}</div>
+                        <div class="text-body-secondary">
+                          {% if item.points %}
+                            +{{ item.points }}
+                          {% else %}
+                            0 <span class="badge text-bg-secondary">unscored</span>
+                          {% endif %}
+                        </div>
+                      </div>
+                      <small class="text-body-secondary">{{ item.completed_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                  {% endfor %}
+                </div>
+                <div class="text-body-secondary mt-2"><small>Showing up to 200 most recent completions.</small></div>
+              {% else %}
+                <div class="text-body-secondary">No completed tickets yet.</div>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="text-body-secondary">v2: charts + per-template stats</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}All Tickets{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">All Tickets</h1>
+    <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New ticket</a>
+  </div>
+
+  {% if tickets %}
+    <div class="list-group">
+      {% for t in tickets %}
+        <a class="list-group-item list-group-item-action {{ t.bg_class }}" href="{% url 'ticket_detail' t.pk %}">
+          <div class="d-flex w-100 justify-content-between align-items-start gap-2">
+            <div>
+              <div class="fw-semibold">{{ t.title }}</div>
+              <small class="text-body-secondary">
+                Assignee: <strong>{{ t.assignee.username|default:"(unassigned)" }}</strong>
+                {% if t.template %} · Template: {{ t.template.title }}{% endif %}
+              </small>
+            </div>
+            <div class="text-end">
+              <span class="badge text-bg-secondary">{{ t.get_status_display }}</span>
+              <div><small class="text-body-secondary">{{ t.created_at|date:"Y-m-d" }}</small></div>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-body-secondary">No tickets.</div>
+  {% endif %}
+{% endblock %}
