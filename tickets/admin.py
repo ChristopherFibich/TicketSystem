@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from django.shortcuts import redirect, render
 from django.urls import path
@@ -30,6 +31,25 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 	autocomplete_fields = ["fixed_assignee"]
 	inlines = [TicketTemplateEligibilityInline]
 	filter_horizontal = ["tags"]
+
+	def save_related(self, request, form, formsets, change):
+		# Let the admin save inlines (eligibilities) first.
+		super().save_related(request, form, formsets, change)
+
+		template: TicketTemplate = form.instance
+		if template.assignment_mode != "POOL":
+			return
+
+		# If the user didn't specify an eligible pool, default to "everyone".
+		if template.eligibilities.exists():
+			return
+
+		User = get_user_model()
+		users = User.objects.filter(is_active=True).only("id")
+		TicketTemplateEligibility.objects.bulk_create(
+			[TicketTemplateEligibility(template=template, user=u, weight=1) for u in users],
+			ignore_conflicts=True,
+		)
 
 	@admin.display(description="Next scheduled for")
 	def next_scheduled_for_display(self, obj: TicketTemplate):

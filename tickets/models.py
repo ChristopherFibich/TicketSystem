@@ -66,6 +66,11 @@ class TicketTemplate(models.Model):
 
 	tags = models.ManyToManyField("Tag", blank=True, related_name="templates")
 	last_scheduled_for = models.DateField(null=True, blank=True)
+	last_completed_for = models.DateField(
+		null=True,
+		blank=True,
+		help_text="Date when a ticket from this template was last completed. Used to schedule the next occurrence.",
+	)
 
 	created_at = models.DateTimeField(auto_now_add=True)
 	updated_at = models.DateTimeField(auto_now=True)
@@ -200,6 +205,10 @@ class Ticket(models.Model):
 				"time_to_complete_seconds": time_to_complete_seconds,
 			},
 		)
+
+		if self.template_id and self.template:
+			self.template.last_completed_for = timezone.localdate(now)
+			self.template.save(update_fields=["last_completed_for", "updated_at"])
 		return completion
 
 

@@ -114,50 +114,47 @@ class Command(BaseCommand):
             if not (1 <= template.monthly_day <= 28):
                 raise CommandError(f"Template '{template}' has invalid monthly_day; use 1-28")
 
-        last = template.last_scheduled_for
-        if last is None:
-            last = template.start_date - timedelta(days=1)
+        # New recurrence semantics: schedule is based on completion.
+        # Only spawn the *next* ticket once the previous one has been completed.
+        if Ticket.objects.filter(template=template).exclude(status=TicketStatus.DONE).exists():
+            self.stdout.write(f"[{template.id}] {template.title}: pending ticket exists; skipping")
+            return 0
 
-        spawned = 0
-        created = 0
-        next_date = next_scheduled_date(template, last)
-        while next_date <= today:
-            spawned += 1
-            if spawned > max_per_template:
-                raise CommandError(f"Template '{template}' exceeded --max-per-template={max_per_template} (check start_date/interval)")
+        if template.last_completed_for is None:
+            next_date = template.start_date
+        else:
+            next_date = next_scheduled_date(template, template.last_completed_for)
+        if next_date > today:
+            self.stdout.write(f"[{template.id}] {template.title}: next due {next_date} (not yet)")
+            return 0
 
-            if Ticket.objects.filter(template=template, scheduled_for_date=next_date).exists():
-                self.stdout.write(f"[{template.id}] {template.title}: already exists for {next_date}")
-            else:
-                assignee = choose_assignee(template)
-                if template.assignment_mode == AssignmentMode.FIXED and assignee is None:
-                    raise CommandError(f"Template '{template}' is FIXED but has no fixed_assignee")
-                if template.assignment_mode == AssignmentMode.POOL and assignee is None:
-                    raise CommandError(f"Template '{template}' has no eligible users")
+        if Ticket.objects.filter(template=template, scheduled_for_date=next_date).exists():
+            self.stdout.write(f"[{template.id}] {template.title}: already exists for {next_date}")
+            return 0
 
-                msg = f"[{template.id}] {template.title}: create ticket for {next_date} -> {assignee}"
-                if dry_run:
-                    self.stdout.write("DRY-RUN " + msg)
-                else:
-                    with transaction.atomic():
-                        ticket = Ticket.objects.create(
-                            template=template,
-                            scheduled_for_date=next_date,
-                            title=template.title,
-                            description=template.description,
-                            status=TicketStatus.NEW,
-                            assignee=assignee,
-                            counts_for_score=template.counts_for_score,
-                        )
-                        if template.tags.exists():
-                            ticket.tags.set(template.tags.all())
-                    created += 1
-                    self.stdout.write(msg)
+        assignee = choose_assignee(template)
+        if template.assignment_mode == AssignmentMode.FIXED and assignee is None:
+            raise CommandError(f"Template '{template}' is FIXED but has no fixed_assignee")
+        if template.assignment_mode == AssignmentMode.POOL and assignee is None:
+            raise CommandError(f"Template '{template}' has no eligible users")
 
-            template.last_scheduled_for = next_date
-            if not dry_run:
-                template.save(update_fields=["last_scheduled_for", "updated_at"])
+        msg = f"[{template.id}] {template.title}: create ticket for {next_date} -> {assignee}"
+        if dry_run:
+            self.stdout.write("DRY-RUN " + msg)
+            return 0
 
-            next_date = next_scheduled_date(template, template.last_scheduled_for)
+        with transaction.atomic():
+            ticket = Ticket.objects.create(
+                template=template,
+                scheduled_for_date=next_date,
+                title=template.title,
+                description=template.description,
+                status=TicketStatus.NEW,
+                assignee=assignee,
+                counts_for_score=template.counts_for_score,
+            )
+            if template.tags.exists():
+                ticket.tags.set(template.tags.all())
 
-        return 0 if dry_run else created
+        self.stdout.write(msg)
+        return 1
