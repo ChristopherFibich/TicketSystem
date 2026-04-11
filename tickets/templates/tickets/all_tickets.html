@@ -8,6 +8,20 @@
     <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New ticket</a>
   </div>
 
+  <form class="mb-3" method="get" action="{% url 'all_tickets' %}">
+    <div class="input-group">
+      <input
+        type="search"
+        class="form-control"
+        name="q"
+        value="{{ q|default:'' }}"
+        placeholder="Search tickets..."
+        aria-label="Search tickets"
+      >
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+    </div>
+  </form>
+
   {% if tickets %}
     <div class="list-group">
       {% for t in tickets %}
@@ -29,6 +43,6 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="text-body-secondary">No tickets.</div>
+    <div class="text-body-secondary">No tickets found.</div>
   {% endif %}
 {% endblock %}

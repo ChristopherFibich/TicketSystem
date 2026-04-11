@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db.models import Avg, Count, Sum
+from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -110,16 +110,26 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 @login_required
 def all_tickets(request: HttpRequest) -> HttpResponse:
 	now = timezone.now()
+	q = (request.GET.get("q") or "").strip()
 
 	tickets = (
 		Ticket.objects.select_related("assignee", "template")
+		.prefetch_related("tags")
 		.all()
 		.order_by("status", "-created_at")
 	)
+	if q:
+		tickets = tickets.filter(
+			Q(title__icontains=q)
+			| Q(description__icontains=q)
+			| Q(assignee__username__icontains=q)
+			| Q(template__title__icontains=q)
+			| Q(tags__name__icontains=q)
+		).distinct()
 	for ticket in tickets:
 		ticket.bg_class = _ticket_bg_class(ticket, now)
 
-	return render(request, "tickets/all_tickets.html", {"tickets": tickets})
+	return render(request, "tickets/all_tickets.html", {"tickets": tickets, "q": q})
 
 
 @login_required
