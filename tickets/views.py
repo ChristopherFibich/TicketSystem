@@ -5,7 +5,6 @@ from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -84,6 +83,12 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 	ticket = get_object_or_404(Ticket.objects.select_related("assignee", "template"), pk=pk)
 
 	if request.method == "POST":
+		if "take_over" in request.POST:
+			if ticket.status != TicketStatus.DONE:
+				ticket.assignee = request.user
+				ticket.save(update_fields=["assignee", "assigned_at", "updated_at"])
+			return redirect("ticket_detail", pk=ticket.pk)
+
 		if "mark_done" in request.POST:
 			ticket.mark_done(completed_by=request.user)
 			return redirect("ticket_detail", pk=ticket.pk)
@@ -104,9 +109,6 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def all_tickets(request: HttpRequest) -> HttpResponse:
-	if not request.user.is_superuser:
-		raise PermissionDenied
-
 	now = timezone.now()
 
 	tickets = (

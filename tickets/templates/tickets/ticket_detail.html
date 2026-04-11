@@ -60,6 +60,9 @@
 
     <div class="d-flex flex-wrap gap-2">
       <button class="btn btn-primary" type="submit">Save</button>
+      {% if ticket.status != 'DONE' and ticket.assignee and ticket.assignee != user %}
+        <button class="btn btn-outline-primary" type="submit" name="take_over" value="1">Take over</button>
+      {% endif %}
       {% if not completion %}
         <button class="btn btn-success" type="submit" name="mark_done" value="1">Mark done (+points)</button>
       {% endif %}
