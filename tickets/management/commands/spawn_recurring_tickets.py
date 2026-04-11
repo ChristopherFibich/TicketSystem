@@ -35,6 +35,13 @@ class Candidate:
 
 
 def choose_assignee(template: TicketTemplate) -> User | None:
+    return choose_assignee_with_projected_totals(template, projected_points=None)
+
+
+def choose_assignee_with_projected_totals(
+    template: TicketTemplate,
+    projected_points: dict[int, int] | None,
+) -> User | None:
     if template.assignment_mode == AssignmentMode.FIXED:
         return template.fixed_assignee
 
@@ -43,25 +50,21 @@ def choose_assignee(template: TicketTemplate) -> User | None:
     if not candidates:
         return None
 
-    user_ids = [c.user.id for c in candidates]
-    totals = {
-        row["completed_by"]: {
-            "points": int(row["points"] or 0),
-            "count": int(row["count"] or 0),
+    if projected_points is None:
+        user_ids = [c.user.id for c in candidates]
+        totals = {
+            row["completed_by"]: int(row["points"] or 0)
+            for row in Completion.objects.filter(completed_by_id__in=user_ids)
+            .values("completed_by")
+            .annotate(points=Sum("points_awarded"), count=Count("id"))
         }
-        for row in Completion.objects.filter(completed_by_id__in=user_ids)
-        .values("completed_by")
-        .annotate(points=Sum("points_awarded"), count=Count("id"))
-    }
+        projected_points = totals
 
     best_users: list[Candidate] = []
     best_score: int | None = None
 
     for c in candidates:
-        # Lifetime totals to balance "overall score".
-        # Prefer points, but since v1 points are fixed, count is a good proxy.
-        score = totals.get(c.user.id, {}).get("points", 0)
-
+        score = int(projected_points.get(c.user.id, 0))
         if best_score is None or score < best_score:
             best_score = score
             best_users = [c]
@@ -97,13 +100,33 @@ class Command(BaseCommand):
             self.stdout.write("No active templates.")
             return
 
+        # Build a per-run projected total so each new assignment re-balances.
+        base_points = {
+            row["completed_by"]: int(row["points"] or 0)
+            for row in Completion.objects.values("completed_by").annotate(points=Sum("points_awarded"))
+        }
+        projected_points: dict[int, int] = dict(base_points)
+
         created_count = 0
         for template in templates:
-            created_count += self._spawn_for_template(template, today=today, dry_run=dry_run, max_per_template=max_per_template)
+            created_count += self._spawn_for_template(
+                template,
+                today=today,
+                dry_run=dry_run,
+                max_per_template=max_per_template,
+                projected_points=projected_points,
+            )
 
         self.stdout.write(self.style.SUCCESS(f"Done. Created {created_count} ticket(s)."))
 
-    def _spawn_for_template(self, template: TicketTemplate, today: date, dry_run: bool, max_per_template: int) -> int:
+    def _spawn_for_template(
+        self,
+        template: TicketTemplate,
+        today: date,
+        dry_run: bool,
+        max_per_template: int,
+        projected_points: dict[int, int],
+    ) -> int:
         if template.interval < 1:
             raise CommandError(f"Template '{template}' has interval < 1")
 
@@ -132,11 +155,16 @@ class Command(BaseCommand):
             self.stdout.write(f"[{template.id}] {template.title}: already exists for {next_date}")
             return 0
 
-        assignee = choose_assignee(template)
+        assignee = choose_assignee_with_projected_totals(template, projected_points=projected_points)
         if template.assignment_mode == AssignmentMode.FIXED and assignee is None:
             raise CommandError(f"Template '{template}' is FIXED but has no fixed_assignee")
         if template.assignment_mode == AssignmentMode.POOL and assignee is None:
             raise CommandError(f"Template '{template}' has no eligible users")
+
+        # Update the per-run projection so the next ticket re-balances.
+        if assignee is not None and template.assignment_mode == AssignmentMode.POOL:
+            fairness_points = max(1, int(template.points or 1))
+            projected_points[assignee.id] = int(projected_points.get(assignee.id, 0)) + fairness_points
 
         msg = f"[{template.id}] {template.title}: create ticket for {next_date} -> {assignee}"
         if dry_run:
