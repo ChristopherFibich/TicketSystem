@@ -125,7 +125,19 @@
 
   {% if month_history %}
     <div class="card card-body mt-4">
-      <div class="fw-semibold mb-2">Past months</div>
+      <div class="d-flex justify-content-between align-items-baseline mb-2 gap-2">
+        <div class="fw-semibold">Past months</div>
+        {% if months_won %}
+          <div class="text-body-secondary text-end">
+            <small>
+              Months won:
+              {% for mw in months_won %}
+                {{ mw.username }} {{ mw.count }}{% if not forloop.last %} · {% endif %}
+              {% endfor %}
+            </small>
+          </div>
+        {% endif %}
+      </div>
       <div class="overflow-auto" style="max-height: 40vh;">
         <div class="list-group">
           {% for m in month_history %}

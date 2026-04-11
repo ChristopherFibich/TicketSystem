@@ -268,18 +268,24 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		monthly_scores[month][int(row["completed_by"])] = int(row["points"] or 0)
 
 	month_history = []
+	months_won_by_user_id: dict[int, int] = {u.id: 0 for u in users}
 	for month in month_order:
 		scores = []
 		max_points = 0
 		for user in users:
 			points = monthly_scores.get(month, {}).get(user.id, 0)
 			max_points = max(max_points, points)
-			scores.append({"username": user.username, "points": points})
+			scores.append({"user_id": user.id, "username": user.username, "points": points})
 
 		# Mark winner(s) for display; avoid highlighting when everyone has 0.
 		for s in scores:
 			s["is_winner"] = bool(max_points > 0 and s["points"] == max_points)
+			if s["is_winner"]:
+				# Count ties as a win for each top scorer.
+				months_won_by_user_id[int(s["user_id"])] = months_won_by_user_id.get(int(s["user_id"]), 0) + 1
 		month_history.append({"month": month, "scores": scores})
+
+	months_won = [{"username": u.username, "count": months_won_by_user_id.get(u.id, 0)} for u in users]
 
 	return render(
 		request,
@@ -288,5 +294,6 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			"rows": rows,
 			"charts": charts,
 			"month_history": month_history,
+			"months_won": months_won,
 		},
 	)
