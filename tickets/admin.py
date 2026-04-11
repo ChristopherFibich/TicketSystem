@@ -32,6 +32,43 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 	autocomplete_fields = ["fixed_assignee"]
 	inlines = [TicketTemplateEligibilityInline]
 	filter_horizontal = ["tags"]
+	actions = ["add_tags_action"]
+
+	class AddTagsForm(forms.Form):
+		_tags = forms.ModelMultipleChoiceField(
+			label="Tags to add",
+			queryset=Tag.objects.all(),
+			required=True,
+			widget=admin.widgets.FilteredSelectMultiple("tags", is_stacked=False),
+		)
+
+	@admin.action(description="Add tags to selected templates")
+	def add_tags_action(self, request: HttpRequest, queryset):
+		if "apply" in request.POST:
+			form = self.AddTagsForm(request.POST)
+			if form.is_valid():
+				tags = list(form.cleaned_data["_tags"])
+				updated = 0
+				for template in queryset:
+					template.tags.add(*tags)
+					updated += 1
+				self.message_user(
+					request,
+					f"Added {len(tags)} tag(s) to {updated} template(s).",
+					level=messages.SUCCESS,
+				)
+				return redirect("admin:tickets_tickettemplate_changelist")
+		else:
+			form = self.AddTagsForm()
+
+		context = dict(
+			self.admin_site.each_context(request),
+			title="Add tags to templates",
+			templates=queryset,
+			form=form,
+			action_name="add_tags_action",
+		)
+		return render(request, "admin/tickets/tickettemplate/add_tags.html", context)
 
 	def save_related(self, request, form, formsets, change):
 		# Let the admin save inlines (eligibilities) first.

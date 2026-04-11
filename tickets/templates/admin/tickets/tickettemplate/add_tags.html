@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <p>This will add the selected tag(s) to the selected templates. Existing tags will be kept.</p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {{ form.non_field_errors }}
+
+    <fieldset class="module aligned">
+      <div class="form-row">
+        {{ form._tags.errors }}
+        {{ form._tags.label_tag }}
+        {{ form._tags }}
+        {% if form._tags.help_text %}<div class="help">{{ form._tags.help_text }}</div>{% endif %}
+      </div>
+    </fieldset>
+
+    {% for template in templates %}
+      <input type="hidden" name="_selected_action" value="{{ template.pk }}">
+    {% endfor %}
+    <input type="hidden" name="action" value="{{ action_name }}">
+    <input type="hidden" name="apply" value="1">
+
+    <div class="submit-row">
+      <input type="submit" value="Add tags" class="default">
+      <a href="{% url 'admin:tickets_tickettemplate_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
