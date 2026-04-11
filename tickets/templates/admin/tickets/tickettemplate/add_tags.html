@@ -12,10 +12,10 @@
 
     <fieldset class="module aligned">
       <div class="form-row">
-        {{ form._tags.errors }}
-        {{ form._tags.label_tag }}
-        {{ form._tags }}
-        {% if form._tags.help_text %}<div class="help">{{ form._tags.help_text }}</div>{% endif %}
+        {{ form.tags.errors }}
+        {{ form.tags.label_tag }}
+        {{ form.tags }}
+        {% if form.tags.help_text %}<div class="help">{{ form.tags.help_text }}</div>{% endif %}
       </div>
     </fieldset>
 

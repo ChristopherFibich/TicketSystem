@@ -35,7 +35,7 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 	actions = ["add_tags_action"]
 
 	class AddTagsForm(forms.Form):
-		_tags = forms.ModelMultipleChoiceField(
+		tags = forms.ModelMultipleChoiceField(
 			label="Tags to add",
 			queryset=Tag.objects.all(),
 			required=True,
@@ -47,7 +47,7 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 		if "apply" in request.POST:
 			form = self.AddTagsForm(request.POST)
 			if form.is_valid():
-				tags = list(form.cleaned_data["_tags"])
+				tags = list(form.cleaned_data["tags"])
 				updated = 0
 				for template in queryset:
 					template.tags.add(*tags)
@@ -108,7 +108,7 @@ class TicketAdmin(admin.ModelAdmin):
 	actions = ["add_tags_action"]
 
 	class AddTagsForm(forms.Form):
-		_tags = forms.ModelMultipleChoiceField(
+		tags = forms.ModelMultipleChoiceField(
 			label="Tags to add",
 			queryset=Tag.objects.all(),
 			required=True,
@@ -120,7 +120,7 @@ class TicketAdmin(admin.ModelAdmin):
 		if "apply" in request.POST:
 			form = self.AddTagsForm(request.POST)
 			if form.is_valid():
-				tags = list(form.cleaned_data["_tags"])
+				tags = list(form.cleaned_data["tags"])
 				updated = 0
 				for ticket in queryset:
 					ticket.tags.add(*tags)
