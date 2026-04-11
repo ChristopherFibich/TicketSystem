@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import TicketForm
-from .models import Completion, Ticket, TicketStatus
+from .models import Completion, Tag, Ticket, TicketStatus
 
 
 def _ticket_bg_class(ticket: Ticket, now) -> str:
@@ -287,6 +287,42 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 
 	months_won = [{"username": u.username, "count": months_won_by_user_id.get(u.id, 0)} for u in users]
 
+	# Per-tag breakdown (based on completed tickets).
+	tags = list(Tag.objects.all().order_by("name"))
+	tag_counts: dict[int, dict[int, int]] = {t.id: {} for t in tags}
+
+	for row in (
+		Completion.objects.filter(ticket__tags__isnull=False)
+		.values("ticket__tags", "completed_by")
+		.annotate(count=Count("id"))
+	):
+		tag_id = int(row["ticket__tags"])
+		user_id = int(row["completed_by"])
+		if tag_id not in tag_counts:
+			continue
+		tag_counts[tag_id][user_id] = int(row["count"] or 0)
+
+	tag_stats = []
+	for tag in tags:
+		counts_by_user = tag_counts.get(tag.id, {})
+		total = sum(counts_by_user.get(u.id, 0) for u in users)
+		max_count = max([counts_by_user.get(u.id, 0) for u in users] + [0])
+
+		rows_for_tag = []
+		for u in users:
+			count = counts_by_user.get(u.id, 0)
+			pct = 0 if total <= 0 else int(round((count / total) * 100))
+			rows_for_tag.append(
+				{
+					"username": u.username,
+					"count": count,
+					"pct": pct,
+					"is_winner": bool(max_count > 0 and count == max_count),
+				}
+			)
+
+		tag_stats.append({"tag": tag.name, "rows": rows_for_tag, "total": total})
+
 	return render(
 		request,
 		"tickets/scoreboard.html",
@@ -295,5 +331,6 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			"charts": charts,
 			"month_history": month_history,
 			"months_won": months_won,
+			"tag_stats": tag_stats,
 		},
 	)

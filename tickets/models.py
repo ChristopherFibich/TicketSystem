@@ -89,6 +89,17 @@ class TicketTemplateEligibility(models.Model):
 		return f"{self.template} -> {self.user} (w={self.weight})"
 
 
+class Tag(models.Model):
+	name = models.CharField(max_length=50, unique=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ["name"]
+
+	def __str__(self) -> str:
+		return self.name
+
+
 class Ticket(models.Model):
 	template = models.ForeignKey(TicketTemplate, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets")
 	scheduled_for_date = models.DateField(null=True, blank=True, db_index=True)
@@ -101,6 +112,8 @@ class Ticket(models.Model):
 		default=True,
 		help_text="If unchecked, completing this ticket awards 0 points and doesn't affect scoring.",
 	)
+
+	tags = models.ManyToManyField("Tag", blank=True, related_name="tickets")
 
 	assignee = models.ForeignKey(
 		settings.AUTH_USER_MODEL,

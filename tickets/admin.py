@@ -3,7 +3,7 @@ from django.http import HttpRequest
 from django.shortcuts import redirect, render
 from django.urls import path
 
-from .models import Completion, Ticket, TicketTemplate, TicketTemplateEligibility
+from .models import Completion, Tag, Ticket, TicketTemplate, TicketTemplateEligibility
 from .scheduling import next_scheduled_for
 
 
@@ -44,6 +44,7 @@ class TicketAdmin(admin.ModelAdmin):
 	list_filter = ["status", "template"]
 	search_fields = ["title", "description"]
 	autocomplete_fields = ["assignee", "created_by", "template"]
+	filter_horizontal = ["tags"]
 	change_list_template = "admin/tickets/ticket/change_list.html"
 
 	def get_urls(self):
@@ -97,6 +98,12 @@ class TicketAdmin(admin.ModelAdmin):
 			modes=allowed_modes,
 		)
 		return render(request, "admin/tickets/ticket/reset_data.html", context)
+
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin):
+	list_display = ["name", "created_at"]
+	search_fields = ["name"]
 
 
 @admin.register(Completion)

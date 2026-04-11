@@ -165,4 +165,35 @@
       <div class="text-body-secondary mt-2"><small>Showing up to 24 months.</small></div>
     </div>
   {% endif %}
+
+  {% if tag_stats %}
+    <div class="card card-body mt-4">
+      <div class="fw-semibold mb-2">Tags</div>
+      <div class="overflow-auto" style="max-height: 40vh;">
+        <div class="list-group">
+          {% for t in tag_stats %}
+            <div class="list-group-item py-2">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="fw-semibold">{{ t.tag }}</div>
+                <div class="text-end">
+                  {% for r in t.rows %}
+                    <small>
+                      {% if r.is_winner %}
+                        <span class="fw-semibold text-primary">{{ r.username }}</span>
+                      {% else %}
+                        <span class="text-body-secondary">{{ r.username }}</span>
+                      {% endif %}
+                      {{ r.pct }}% ({{ r.count }})
+                    </small>
+                    {% if not forloop.last %}<span class="text-body-secondary"> · </span>{% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="text-body-secondary mt-2"><small>Percentages are based on completed tickets with that tag.</small></div>
+    </div>
+  {% endif %}
 {% endblock %}
