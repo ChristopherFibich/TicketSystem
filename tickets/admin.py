@@ -1,3 +1,4 @@
+from django import forms
 from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
@@ -67,6 +68,39 @@ class TicketAdmin(admin.ModelAdmin):
 	autocomplete_fields = ["assignee", "created_by", "template"]
 	filter_horizontal = ["tags"]
 	change_list_template = "admin/tickets/ticket/change_list.html"
+	actions = ["add_tags_action"]
+
+	class AddTagsForm(forms.Form):
+		_tags = forms.ModelMultipleChoiceField(
+			label="Tags to add",
+			queryset=Tag.objects.all(),
+			required=True,
+			widget=admin.widgets.FilteredSelectMultiple("tags", is_stacked=False),
+		)
+
+	@admin.action(description="Add tags to selected tickets")
+	def add_tags_action(self, request: HttpRequest, queryset):
+		if "apply" in request.POST:
+			form = self.AddTagsForm(request.POST)
+			if form.is_valid():
+				tags = list(form.cleaned_data["_tags"])
+				updated = 0
+				for ticket in queryset:
+					ticket.tags.add(*tags)
+					updated += 1
+				self.message_user(request, f"Added {len(tags)} tag(s) to {updated} ticket(s).", level=messages.SUCCESS)
+				return redirect("admin:tickets_ticket_changelist")
+		else:
+			form = self.AddTagsForm()
+
+		context = dict(
+			self.admin_site.each_context(request),
+			title="Add tags to tickets",
+			tickets=queryset,
+			form=form,
+			action_name="add_tags_action",
+		)
+		return render(request, "admin/tickets/ticket/add_tags.html", context)
 
 	def get_urls(self):
 		urls = super().get_urls()
