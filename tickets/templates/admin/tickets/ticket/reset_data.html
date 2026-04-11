@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>Reset TicketSystem data</h1>
+
+  <p>
+    This is <strong>destructive</strong> and cannot be undone.
+    Type <code>RESET</code> to confirm.
+  </p>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div style="margin: 1rem 0;">
+      <label for="id_mode"><strong>What to reset</strong></label><br />
+      <select name="mode" id="id_mode">
+        {% for key, label in modes.items %}
+          <option value="{{ key }}" {% if key == mode %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="margin: 1rem 0;">
+      <label for="id_confirm"><strong>Confirm</strong></label><br />
+      <input type="text" name="confirm" id="id_confirm" placeholder="Type RESET" autocomplete="off" />
+    </div>
+
+    <div>
+      <input type="submit" value="Reset" class="default" />
+      <a href="{% url 'admin:tickets_ticket_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
