@@ -131,7 +131,7 @@
           {% for m in month_history %}
             <div class="list-group-item py-2">
               <div class="d-flex justify-content-between align-items-start gap-2">
-                <div class="fw-semibold">{{ m.month|date:"Y-m" }}</div>
+                <div class="fw-semibold">{{ m.month|date:"F Y" }}</div>
                 <div class="text-end">
                   {% for s in m.scores %}
                     <small><span class="text-body-secondary">{{ s.username }}:</span> {{ s.points }}</small>
