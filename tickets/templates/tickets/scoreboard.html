@@ -134,7 +134,14 @@
                 <div class="fw-semibold">{{ m.month|date:"F Y" }}</div>
                 <div class="text-end">
                   {% for s in m.scores %}
-                    <small><span class="text-body-secondary">{{ s.username }}:</span> {{ s.points }}</small>
+                    <small>
+                      {% if s.is_winner %}
+                        <span class="fw-semibold">{{ s.username }}</span>:
+                      {% else %}
+                        <span class="text-body-secondary">{{ s.username }}</span>:
+                      {% endif %}
+                      {{ s.points }}
+                    </small>
                     {% if not forloop.last %}<span class="text-body-secondary"> · </span>{% endif %}
                   {% endfor %}
                 </div>

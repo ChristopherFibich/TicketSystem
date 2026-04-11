@@ -270,13 +270,15 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	month_history = []
 	for month in month_order:
 		scores = []
+		max_points = 0
 		for user in users:
-			scores.append(
-				{
-					"username": user.username,
-					"points": monthly_scores.get(month, {}).get(user.id, 0),
-				}
-			)
+			points = monthly_scores.get(month, {}).get(user.id, 0)
+			max_points = max(max_points, points)
+			scores.append({"username": user.username, "points": points})
+
+		# Mark winner(s) for display; avoid highlighting when everyone has 0.
+		for s in scores:
+			s["is_winner"] = bool(max_points > 0 and s["points"] == max_points)
 		month_history.append({"month": month, "scores": scores})
 
 	return render(
