@@ -123,49 +123,6 @@
     </table>
   </div>
 
-  {% if month_history %}
-    <div class="card card-body mt-4">
-      <div class="d-flex justify-content-between align-items-baseline mb-2 gap-2">
-        <div class="fw-semibold">Past months</div>
-        {% if months_won %}
-          <div class="text-body-secondary text-end">
-            <small>
-              Months won:
-              {% for mw in months_won %}
-                {{ mw.username }} {{ mw.count }}{% if not forloop.last %} · {% endif %}
-              {% endfor %}
-            </small>
-          </div>
-        {% endif %}
-      </div>
-      <div class="overflow-auto" style="max-height: 40vh;">
-        <div class="list-group">
-          {% for m in month_history %}
-            <div class="list-group-item py-2">
-              <div class="d-flex justify-content-between align-items-start gap-2">
-                <div class="fw-semibold">{{ m.month|date:"F Y" }}</div>
-                <div class="text-end">
-                  {% for s in m.scores %}
-                    <small>
-                      {% if s.is_winner %}
-                        <span class="fw-semibold text-primary">{{ s.username }}</span>:
-                      {% else %}
-                        <span class="text-body-secondary">{{ s.username }}</span>:
-                      {% endif %}
-                      {{ s.points }}
-                    </small>
-                    {% if not forloop.last %}<span class="text-body-secondary"> · </span>{% endif %}
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="text-body-secondary mt-2"><small>Showing up to 24 months.</small></div>
-    </div>
-  {% endif %}
-
   {% if tag_stats %}
     <div class="card card-body mt-4">
       <div class="fw-semibold mb-2">Tags</div>
@@ -194,6 +151,44 @@
         </div>
       </div>
       <div class="text-body-secondary mt-2"><small>Percentages are based on completed tickets with that tag.</small></div>
+    </div>
+  {% endif %}
+
+  {% if month_history %}
+    <div class="card card-body mt-4">
+      <div class="d-flex justify-content-between align-items-baseline mb-2 gap-2">
+        <div class="fw-semibold">Past months</div>
+        {% if months_won %}
+          <div class="text-body-secondary text-end">
+            <small>
+              Months won:
+              {% for mw in months_won %}
+                {{ mw.username }} {{ mw.count }}{% if not forloop.last %} · {% endif %}
+              {% endfor %}
+            </small>
+          </div>
+        {% endif %}
+      </div>
+      <div class="overflow-auto" style="max-height: 40vh;">
+        <div class="list-group">
+          {% for m in month_history %}
+            <div class="list-group-item py-2">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="fw-semibold">{{ m.month|date:"F Y" }}</div>
+                <div class="text-end">
+                  {% for s in m.scores %}
+                    <small class="{% if s.is_winner %}text-primary fw-semibold{% else %}text-body-secondary{% endif %}">
+                      {{ s.username }}: {{ s.points }}
+                    </small>
+                    {% if not forloop.last %}<span class="text-body-secondary"> · </span>{% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="text-body-secondary mt-2"><small>Showing up to 24 months.</small></div>
     </div>
   {% endif %}
 {% endblock %}
