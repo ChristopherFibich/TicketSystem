@@ -123,5 +123,27 @@
     </table>
   </div>
 
-  <div class="text-body-secondary">v2: charts + per-template stats</div>
+  {% if month_history %}
+    <div class="card card-body mt-4">
+      <div class="fw-semibold mb-2">Past months</div>
+      <div class="overflow-auto" style="max-height: 40vh;">
+        <div class="list-group">
+          {% for m in month_history %}
+            <div class="list-group-item py-2">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="fw-semibold">{{ m.month|date:"Y-m" }}</div>
+                <div class="text-end">
+                  {% for s in m.scores %}
+                    <small><span class="text-body-secondary">{{ s.username }}:</span> {{ s.points }}</small>
+                    {% if not forloop.last %}<span class="text-body-secondary"> · </span>{% endif %}
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="text-body-secondary mt-2"><small>Showing up to 24 months.</small></div>
+    </div>
+  {% endif %}
 {% endblock %}

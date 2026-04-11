@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Avg, Count, Sum
+from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
@@ -246,4 +247,44 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	for r in rows:
 		r["done_items"] = done_items_by_user_id.get(r["user"].id, [])
 
-	return render(request, "tickets/scoreboard.html", {"rows": rows, "charts": charts})
+	# Monthly history (bounded to keep the page size reasonable).
+	max_months = 24
+	monthly_scores: dict[object, dict[int, int]] = {}
+	month_order: list[object] = []
+
+	for row in (
+		Completion.objects.annotate(month=TruncMonth("completed_at"))
+		.values("month", "completed_by")
+		.annotate(points=Sum("points_awarded"))
+		.order_by("-month")
+	):
+		month = row["month"]
+		if month not in monthly_scores:
+			if len(month_order) >= max_months:
+				break
+			monthly_scores[month] = {}
+			month_order.append(month)
+
+		monthly_scores[month][int(row["completed_by"])] = int(row["points"] or 0)
+
+	month_history = []
+	for month in month_order:
+		scores = []
+		for user in users:
+			scores.append(
+				{
+					"username": user.username,
+					"points": monthly_scores.get(month, {}).get(user.id, 0),
+				}
+			)
+		month_history.append({"month": month, "scores": scores})
+
+	return render(
+		request,
+		"tickets/scoreboard.html",
+		{
+			"rows": rows,
+			"charts": charts,
+			"month_history": month_history,
+		},
+	)
