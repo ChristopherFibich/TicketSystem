@@ -63,6 +63,8 @@ class TicketTemplate(models.Model):
 		default=True,
 		help_text="If unchecked, completing tickets from this template awards 0 points and doesn't affect scoring.",
 	)
+
+	tags = models.ManyToManyField("Tag", blank=True, related_name="templates")
 	last_scheduled_for = models.DateField(null=True, blank=True)
 
 	created_at = models.DateTimeField(auto_now_add=True)

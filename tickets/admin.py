@@ -29,6 +29,7 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 	search_fields = ["title", "description"]
 	autocomplete_fields = ["fixed_assignee"]
 	inlines = [TicketTemplateEligibilityInline]
+	filter_horizontal = ["tags"]
 
 	@admin.display(description="Next scheduled for")
 	def next_scheduled_for_display(self, obj: TicketTemplate):

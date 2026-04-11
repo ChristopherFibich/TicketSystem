@@ -140,7 +140,7 @@ class Command(BaseCommand):
                     self.stdout.write("DRY-RUN " + msg)
                 else:
                     with transaction.atomic():
-                        Ticket.objects.create(
+                        ticket = Ticket.objects.create(
                             template=template,
                             scheduled_for_date=next_date,
                             title=template.title,
@@ -149,6 +149,8 @@ class Command(BaseCommand):
                             assignee=assignee,
                             counts_for_score=template.counts_for_score,
                         )
+                        if template.tags.exists():
+                            ticket.tags.set(template.tags.all())
                     created += 1
                     self.stdout.write(msg)
 
