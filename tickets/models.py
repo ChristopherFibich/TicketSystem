@@ -173,7 +173,7 @@ class Ticket(models.Model):
 	def mark_done(self, completed_by) -> "Completion":
 		if self.status == TicketStatus.DONE:
 			try:
-				return self.completion
+				return self.completions.get(completed_by=completed_by)
 			except Completion.DoesNotExist:
 				pass
 
@@ -198,8 +198,8 @@ class Ticket(models.Model):
 
 		completion, _ = Completion.objects.get_or_create(
 			ticket=self,
+			completed_by=completed_by,
 			defaults={
-				"completed_by": completed_by,
 				"completed_at": now,
 				"points_awarded": points,
 				"time_to_complete_seconds": time_to_complete_seconds,
@@ -213,7 +213,7 @@ class Ticket(models.Model):
 
 
 class Completion(models.Model):
-	ticket = models.OneToOneField(Ticket, on_delete=models.CASCADE, related_name="completion")
+	ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="completions")
 	completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="completions")
 	completed_at = models.DateTimeField(default=timezone.now)
 	points_awarded = models.PositiveSmallIntegerField(default=1)
@@ -221,6 +221,9 @@ class Completion(models.Model):
 
 	class Meta:
 		ordering = ["-completed_at"]
+		constraints = [
+			models.UniqueConstraint(fields=["ticket", "completed_by"], name="unique_ticket_completed_by"),
+		]
 
 	def __str__(self) -> str:
 		return f"{self.ticket} by {self.completed_by}"

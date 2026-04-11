@@ -70,10 +70,38 @@
 
     {% if completion %}
       <hr />
-      <div class="text-body-secondary">
-        Completed by <strong>{{ completion.completed_by }}</strong>
-        on {{ completion.completed_at|date:"Y-m-d H:i" }}
-        · Points: <strong>{{ completion.points_awarded }}</strong>
+      <div class="text-body-secondary mb-2">
+        Completed on {{ completion.completed_at|date:"Y-m-d H:i" }}
+      </div>
+
+      <div class="mb-3">
+        <div class="fw-semibold">Rewards</div>
+        <ul class="mb-0">
+          {% for c in completions %}
+            <li>
+              <strong>{{ c.completed_by }}</strong>
+              · Points: <strong>{{ c.points_awarded }}</strong>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="mb-2">
+        <div class="fw-semibold">Share reward</div>
+        {% if share_candidates %}
+          <div class="text-body-secondary mb-2">Select one or more users to also receive the same points.</div>
+          <select class="form-select" name="share_users" multiple>
+            {% for u in share_candidates %}
+              <option value="{{ u.id }}">{{ u.username }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Hold Ctrl/Cmd to select multiple.</div>
+          <div class="mt-2">
+            <button class="btn btn-outline-success" type="submit" name="share_points" value="1">Share points</button>
+          </div>
+        {% else %}
+          <div class="text-body-secondary">All users already have rewards for this ticket.</div>
+        {% endif %}
       </div>
     {% endif %}
   </form>

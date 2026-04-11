@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.http import HttpRequest, HttpResponse
@@ -10,6 +11,8 @@ from django.utils import timezone
 
 from .forms import TicketForm
 from .models import Completion, Tag, Ticket, TicketStatus
+
+AuthUser = get_user_model()
 
 
 def _ticket_bg_class(ticket: Ticket, now) -> str:
@@ -81,8 +84,46 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 @login_required
 def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 	ticket = get_object_or_404(Ticket.objects.select_related("assignee", "template"), pk=pk)
+	existing_completion_user_ids = list(ticket.completions.values_list("completed_by_id", flat=True))
 
 	if request.method == "POST":
+		if "share_points" in request.POST:
+			if ticket.status != TicketStatus.DONE:
+				return redirect("ticket_detail", pk=ticket.pk)
+
+			share_user_ids = [int(x) for x in request.POST.getlist("share_users") if str(x).isdigit()]
+			share_user_ids = [uid for uid in share_user_ids if uid not in existing_completion_user_ids]
+			if share_user_ids:
+				# Award the same points as the ticket completion to each selected user.
+				now = timezone.now()
+				points = 1
+				if ticket.template_id and ticket.template:
+					if ticket.template.counts_for_score:
+						points = int(ticket.template.points or 1)
+					else:
+						points = 0
+				else:
+					points = 1 if ticket.counts_for_score else 0
+
+				completed_at = ticket.completed_at or now
+				time_to_complete_seconds = None
+				if ticket.created_at:
+					delta = completed_at - ticket.created_at
+					time_to_complete_seconds = max(0, int(delta.total_seconds()))
+
+				users = AuthUser.objects.filter(id__in=share_user_ids, is_active=True)
+				for u in users:
+					Completion.objects.get_or_create(
+						ticket=ticket,
+						completed_by=u,
+						defaults={
+							"completed_at": completed_at,
+							"points_awarded": points,
+							"time_to_complete_seconds": time_to_complete_seconds,
+						},
+					)
+			return redirect("ticket_detail", pk=ticket.pk)
+
 		if "take_over" in request.POST:
 			if ticket.status != TicketStatus.DONE:
 				ticket.assignee = request.user
@@ -103,8 +144,20 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 	else:
 		form = TicketForm(instance=ticket)
 
-	completion = getattr(ticket, "completion", None)
-	return render(request, "tickets/ticket_detail.html", {"ticket": ticket, "form": form, "completion": completion})
+	completions = list(ticket.completions.select_related("completed_by").order_by("completed_at"))
+	completion = completions[0] if completions else None
+	share_candidates = AuthUser.objects.filter(is_active=True).exclude(id__in=existing_completion_user_ids).order_by("username")
+	return render(
+		request,
+		"tickets/ticket_detail.html",
+		{
+			"ticket": ticket,
+			"form": form,
+			"completion": completion,
+			"completions": completions,
+			"share_candidates": share_candidates,
+		},
+	)
 
 
 @login_required
