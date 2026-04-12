@@ -1,61 +1,29 @@
-# Ticket System
+## Django dev server (manual start)
 
-This is a ticket system that allows users to create, manage, and track tickets for various issues and tasks. The system is designed to simplify the ticketing process and improve workflow efficiency.
+To start the app manually, follow these steps:
 
-## Features
-- Create and manage tickets
-- Assign tickets to users
-- Track ticket status and history
-
-## Installation
-1. Clone the repository: `git clone https://github.com/ChristopherFibich/TicketSystem.git`
-2. Navigate to the project directory: `cd TicketSystem`
-3. Install dependencies: `npm install`
-
-## Usage
-Run the application: `npm start`
-
-## Systemd Service
-
-### Ticket System Service
-
-This section describes how to set up the Ticket System as a systemd service:
-
-1. Create a service file:
+1. Change directory into the repository:
    ```bash
-   sudo nano /etc/systemd/system/ticket-system.service
+   cd into the repo
    ```
-
-2. Add the following content to the service file:
-   ```ini
-   [Unit]
-   Description=Ticket System Service
-   After=network.target
-
-   [Service]
-   ExecStart=/usr/bin/node /path/to/your/app.js
-   Restart=always
-   User=nobody
-   Environment=PATH=/usr/bin:/usr/local/bin
-   Environment=NODE_ENV=production
-
-   [Install]
-   WantedBy=multi-user.target
-   ```
-
-3. Reload systemd to apply the changes:
+2. Create and activate the virtual environment:
    ```bash
-   sudo systemctl daemon-reload
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
    ```
-
-4. Start the Ticket System service:
+3. Install the required packages:
    ```bash
-   sudo systemctl start ticket-system
+   pip install -r requirements.txt
    ```
-
-5. Enable the service to start on boot:
+4. Run the migrations:
    ```bash
-   sudo systemctl enable ticket-system
+   python manage.py migrate
    ```
-
-Follow these steps to successfully set up and run the Ticket System as a service on your system.
+5. Create a superuser:
+   ```bash
+   python manage.py createsuperuser
+   ```
+6. Finally, start the development server:
+   ```bash
+   python manage.py runserver 0.0.0.0:8000
+   ```
