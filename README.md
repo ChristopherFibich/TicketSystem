@@ -1,49 +1,61 @@
-## Systemd Service for Django App
+# Ticket System
 
-To run the Django app as a service and manage recurring tasks, you can set up a systemd service unit along with a timer.
+This is a ticket system that allows users to create, manage, and track tickets for various issues and tasks. The system is designed to simplify the ticketing process and improve workflow efficiency.
 
-### Sample Service Unit: `/etc/systemd/system/ticketsystem.service`
-```ini
-[Unit]
-Description=Django Ticket System Service
+## Features
+- Create and manage tickets
+- Assign tickets to users
+- Track ticket status and history
 
-[Service]
-WorkingDirectory=/path/to/TicketSystem
-ExecStart=/path/to/TicketSystem/.venv/bin/python manage.py runserver 0.0.0.0:8000
-Environment="DJANGO_DEBUG=0" "DJANGO_ALLOWED_HOSTS=..."
-Restart=on-failure
-User=...
+## Installation
+1. Clone the repository: `git clone https://github.com/ChristopherFibich/TicketSystem.git`
+2. Navigate to the project directory: `cd TicketSystem`
+3. Install dependencies: `npm install`
 
-[Install]
-WantedBy=multi-user.target
-```
+## Usage
+Run the application: `npm start`
 
-### Sample Timer Unit: `/etc/systemd/system/ticketsystem-spawn.timer`
-```ini
-[Unit]
-Description=Runs ticketsystem-spawn.service at boot
+## Systemd Service
 
-[Timer]
-OnBootSec=5min
-Unit=ticketsystem-spawn.service
+### Ticket System Service
 
-[Install]
-WantedBy=timers.target
-```
+This section describes how to set up the Ticket System as a systemd service:
 
+1. Create a service file:
+   ```bash
+   sudo nano /etc/systemd/system/ticket-system.service
+   ```
 
-### Sample Spawn Unit: `/etc/systemd/system/ticketsystem-spawn.service`
-```ini
-[Unit]
-Description=Run management command to spawn recurring tickets
+2. Add the following content to the service file:
+   ```ini
+   [Unit]
+   Description=Ticket System Service
+   After=network.target
 
-[Service]
-Type=oneshot
-ExecStart=/path/to/TicketSystem/.venv/bin/python manage.py spawn_recurring_tickets
-```
+   [Service]
+   ExecStart=/usr/bin/node /path/to/your/app.js
+   Restart=always
+   User=nobody
+   Environment=PATH=/usr/bin:/usr/local/bin
+   Environment=NODE_ENV=production
 
-After creating these files, remember to enable and start the timer:
-```bash
-sudo systemctl enable ticketsystem-spawn.timer
-sudo systemctl start ticketsystem-spawn.timer
-```
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. Reload systemd to apply the changes:
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+4. Start the Ticket System service:
+   ```bash
+   sudo systemctl start ticket-system
+   ```
+
+5. Enable the service to start on boot:
+   ```bash
+   sudo systemctl enable ticket-system
+   ```
+
+Follow these steps to successfully set up and run the Ticket System as a service on your system.
