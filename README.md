@@ -1,20 +1,16 @@
-## Django dev server (manual start)
 
-To start the app manually, follow these steps:
 
-1. Change directory into the repository:
-   ```bash
-   cd into the repo
-   ```
-2. Create and activate the virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
-   ```
-3. Install the required packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
+Fastest way to run locally (or on a LAN box) is Django’s dev server:
+
+```bash
+cd TicketSystem
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8000
 4. Run the migrations:
    ```bash
    python manage.py migrate
