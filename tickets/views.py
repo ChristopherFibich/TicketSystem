@@ -164,6 +164,7 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 def all_tickets(request: HttpRequest) -> HttpResponse:
 	now = timezone.now()
 	q = (request.GET.get("q") or "").strip()
+	show_done = (request.GET.get("show_done") or "").strip() in {"1", "true", "yes", "on"}
 
 	tickets = (
 		Ticket.objects.select_related("assignee", "template")
@@ -171,6 +172,8 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 		.all()
 		.order_by("status", "-created_at")
 	)
+	if not show_done:
+		tickets = tickets.exclude(status=TicketStatus.DONE)
 	if q:
 		tickets = tickets.filter(
 			Q(title__icontains=q)
@@ -182,7 +185,15 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 	for ticket in tickets:
 		ticket.bg_class = _ticket_bg_class(ticket, now)
 
-	return render(request, "tickets/all_tickets.html", {"tickets": tickets, "q": q})
+	return render(
+		request,
+		"tickets/all_tickets.html",
+		{
+			"tickets": tickets,
+			"q": q,
+			"show_done": show_done,
+		},
+	)
 
 
 @login_required

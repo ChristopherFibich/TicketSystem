@@ -5,10 +5,21 @@
 {% block content %}
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 m-0">All Tickets</h1>
-    <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New ticket</a>
+    <div class="d-flex align-items-center gap-2">
+      <a
+        class="btn btn-outline-secondary btn-sm"
+        href="{% url 'all_tickets' %}?{% if q %}q={{ q|urlencode }}&{% endif %}show_done={% if show_done %}0{% else %}1{% endif %}"
+      >
+        Show done
+      </a>
+      <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New ticket</a>
+    </div>
   </div>
 
   <form class="mb-3" method="get" action="{% url 'all_tickets' %}">
+    {% if show_done %}
+      <input type="hidden" name="show_done" value="1">
+    {% endif %}
     <div class="input-group">
       <input
         type="search"
