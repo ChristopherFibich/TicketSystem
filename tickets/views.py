@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import TicketForm
-from .models import Completion, Tag, Ticket, TicketStatus
+from .models import Completion, FeedTime, PetFeedStatus, PetType, Tag, Ticket, TicketStatus
 
 AuthUser = get_user_model()
 
@@ -199,6 +199,42 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 @login_required
 def help_page(request: HttpRequest) -> HttpResponse:
 	return render(request, "tickets/help.html")
+
+
+@login_required
+def pets(request: HttpRequest) -> HttpResponse:
+	today = timezone.localdate()
+
+	def _get_row(pet: str, time: str) -> PetFeedStatus:
+		obj, _ = PetFeedStatus.objects.get_or_create(day=today, pet=pet, time=time, defaults={"fed": False})
+		return obj
+
+	if request.method == "POST":
+		pet = (request.POST.get("pet") or "").strip()
+		time = (request.POST.get("time") or "").strip()
+		if pet in {PetType.CAT, PetType.DOG} and time in {FeedTime.MORNING, FeedTime.EVENING}:
+			row = _get_row(pet, time)
+			row.fed = not bool(row.fed)
+			row.updated_by = request.user
+			row.save(update_fields=["fed", "updated_by", "updated_at"])
+		return redirect("pets")
+
+	cat_morning = _get_row(PetType.CAT, FeedTime.MORNING)
+	cat_evening = _get_row(PetType.CAT, FeedTime.EVENING)
+	dog_morning = _get_row(PetType.DOG, FeedTime.MORNING)
+	dog_evening = _get_row(PetType.DOG, FeedTime.EVENING)
+
+	return render(
+		request,
+		"tickets/pets.html",
+		{
+			"today": today,
+			"cat_morning": cat_morning,
+			"cat_evening": cat_evening,
+			"dog_morning": dog_morning,
+			"dog_evening": dog_evening,
+		},
+	)
 
 
 @login_required

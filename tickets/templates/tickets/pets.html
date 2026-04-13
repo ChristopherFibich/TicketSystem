@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Pets{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Pets</h1>
+    <div class="text-body-secondary small">{{ today|date:"Y-m-d" }}</div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="CAT">
+        <input type="hidden" name="time" value="AM">
+        <button type="submit" class="btn btn-lg {% if cat_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Cats · Morning · {% if cat_morning.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="CAT">
+        <input type="hidden" name="time" value="PM">
+        <button type="submit" class="btn btn-lg {% if cat_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Cats · Evening · {% if cat_evening.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="DOG">
+        <input type="hidden" name="time" value="AM">
+        <button type="submit" class="btn btn-lg {% if dog_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Dog · Morning · {% if dog_morning.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="DOG">
+        <input type="hidden" name="time" value="PM">
+        <button type="submit" class="btn btn-lg {% if dog_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Dog · Evening · {% if dog_evening.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

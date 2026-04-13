@@ -227,3 +227,38 @@ class Completion(models.Model):
 
 	def __str__(self) -> str:
 		return f"{self.ticket} by {self.completed_by}"
+
+
+class PetType(models.TextChoices):
+	CAT = "CAT", "Cat"
+	DOG = "DOG", "Dog"
+
+
+class FeedTime(models.TextChoices):
+	MORNING = "AM", "Morning"
+	EVENING = "PM", "Evening"
+
+
+class PetFeedStatus(models.Model):
+	day = models.DateField(db_index=True)
+	pet = models.CharField(max_length=3, choices=PetType.choices)
+	time = models.CharField(max_length=2, choices=FeedTime.choices)
+	fed = models.BooleanField(default=False)
+
+	updated_at = models.DateTimeField(auto_now=True)
+	updated_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="pet_feed_updates",
+	)
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=["day", "pet", "time"], name="unique_pet_feed_per_day"),
+		]
+		ordering = ["-day", "pet", "time"]
+
+	def __str__(self) -> str:
+		return f"{self.day} {self.pet} {self.time}: {'fed' if self.fed else 'not fed'}"
