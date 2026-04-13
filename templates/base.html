@@ -13,27 +13,47 @@
   </head>
   <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary">
-      <div class="container d-flex justify-content-end">
-        <div class="d-flex gap-2">
+      <div class="container">
+        <div class="d-flex align-items-center ms-auto gap-2">
           {% if user.is_authenticated %}
-            <span class="navbar-text small text-body-secondary align-self-center">{{ user.username }}</span>
+            <span class="navbar-text small text-body-secondary">{{ user.username }}</span>
           {% endif %}
-          {% if user.is_authenticated %}
-            <a class="btn btn-outline-primary btn-sm" href="{% url 'my_tickets' %}">My tickets</a>
-            <a class="btn btn-outline-primary btn-sm" href="{% url 'pets' %}">Pets</a>
-            <a class="btn btn-outline-primary btn-sm" href="{% url 'einkaufsliste' %}">Einkaufsliste</a>
-            <a class="btn btn-outline-primary btn-sm" href="{% url 'all_tickets' %}">All tickets</a>
-          {% endif %}
-          <a class="btn btn-outline-primary btn-sm" href="{% url 'scoreboard' %}">Scoreboard</a>
-          {% if user.is_authenticated %}
-            <a class="btn btn-outline-secondary btn-sm" href="{% url 'help_page' %}" aria-label="Help">?</a>
-            <form method="post" action="{% url 'logout' %}" class="m-0 p-0">
-              {% csrf_token %}
-              <button class="btn btn-outline-secondary btn-sm" type="submit">Logout</button>
-            </form>
-          {% else %}
-            <a class="btn btn-outline-secondary btn-sm" href="{% url 'login' %}">Login</a>
-          {% endif %}
+
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#navMenu"
+            aria-controls="navMenu"
+            aria-expanded="false"
+            aria-label="Toggle navigation"
+          >
+            <span class="navbar-toggler-icon" style="display:none"></span>
+            <span aria-hidden="true">☰</span>
+          </button>
+        </div>
+
+        <div class="collapse navbar-collapse" id="navMenu">
+          <ul class="navbar-nav ms-auto">
+            {% if user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="{% url 'my_tickets' %}">My tickets</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'pets' %}">Pets</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'einkaufsliste' %}">Einkaufsliste</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'all_tickets' %}">All tickets</a></li>
+            {% endif %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'scoreboard' %}">Scoreboard</a></li>
+            {% if user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="{% url 'help_page' %}" aria-label="Help">?</a></li>
+              <li class="nav-item">
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                  {% csrf_token %}
+                  <button class="btn btn-link nav-link" type="submit">Logout</button>
+                </form>
+              </li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Login</a></li>
+            {% endif %}
+          </ul>
         </div>
       </div>
     </nav>
