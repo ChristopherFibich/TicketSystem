@@ -262,3 +262,24 @@ class PetFeedStatus(models.Model):
 
 	def __str__(self) -> str:
 		return f"{self.day} {self.pet} {self.time}: {'fed' if self.fed else 'not fed'}"
+
+
+class ShoppingItem(models.Model):
+	text = models.CharField(max_length=200)
+	checked = models.BooleanField(default=False)
+
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+	created_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="shopping_items_created",
+	)
+
+	class Meta:
+		ordering = ["checked", "-created_at"]
+
+	def __str__(self) -> str:
+		return self.text

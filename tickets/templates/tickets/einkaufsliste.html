@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Einkaufsliste{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Einkaufsliste</h1>
+    <form method="post" class="m-0">
+      {% csrf_token %}
+      <button class="btn btn-outline-danger btn-sm" type="submit" name="clear" value="1">Clear list</button>
+    </form>
+  </div>
+
+  <form method="post" class="mb-3">
+    {% csrf_token %}
+    <div class="input-group">
+      <input type="text" class="form-control" name="text" placeholder="Add item..." maxlength="200" autocomplete="off">
+      <button class="btn btn-primary" type="submit">Add</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th style="width: 1%">Done</th>
+          <th>Item</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          <tr>
+            <td>
+              <form method="post" class="m-0">
+                {% csrf_token %}
+                <input type="hidden" name="toggle" value="1">
+                <input type="hidden" name="item_id" value="{{ item.id }}">
+                <button type="submit" class="btn btn-sm {% if item.checked %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                  {% if item.checked %}✓{% else %}○{% endif %}
+                </button>
+              </form>
+            </td>
+            <td class="{% if item.checked %}text-body-secondary text-decoration-line-through{% endif %}">
+              {{ item.text }}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="2" class="text-body-secondary">No items.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

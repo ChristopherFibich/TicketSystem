@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import TicketForm
-from .models import Completion, FeedTime, PetFeedStatus, PetType, Tag, Ticket, TicketStatus
+from .models import Completion, FeedTime, PetFeedStatus, PetType, ShoppingItem, Tag, Ticket, TicketStatus
 
 AuthUser = get_user_model()
 
@@ -235,6 +235,34 @@ def pets(request: HttpRequest) -> HttpResponse:
 			"dog_evening": dog_evening,
 		},
 	)
+
+
+@login_required
+def einkaufsliste(request: HttpRequest) -> HttpResponse:
+	if request.method == "POST":
+		if "clear" in request.POST:
+			ShoppingItem.objects.all().delete()
+			return redirect("einkaufsliste")
+
+		if "toggle" in request.POST:
+			item_id = request.POST.get("item_id")
+			try:
+				item_id_int = int(item_id)
+			except (TypeError, ValueError):
+				return redirect("einkaufsliste")
+			item = ShoppingItem.objects.filter(id=item_id_int).first()
+			if item:
+				item.checked = not bool(item.checked)
+				item.save(update_fields=["checked", "updated_at"])
+			return redirect("einkaufsliste")
+
+		text = (request.POST.get("text") or "").strip()
+		if text:
+			ShoppingItem.objects.create(text=text[:200], checked=False, created_by=request.user)
+			return redirect("einkaufsliste")
+
+	items = ShoppingItem.objects.all()
+	return render(request, "tickets/einkaufsliste.html", {"items": items})
 
 
 @login_required
