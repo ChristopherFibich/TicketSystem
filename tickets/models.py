@@ -264,6 +264,43 @@ class PetFeedStatus(models.Model):
 		return f"{self.day} {self.pet} {self.time}: {'fed' if self.fed else 'not fed'}"
 
 
+class DashboardPerson(models.TextChoices):
+	CHRIS = "CHRIS", "Chris"
+	MICHELLE = "MICHELLE", "Michelle"
+
+
+class DashboardSupplement(models.TextChoices):
+	MULTIVITAMIN = "MULTIVITAMIN", "Multivitamin"
+	VITAMIN_B12 = "VITAMIN_B12", "Vitamin B12"
+	CREATINE = "CREATINE", "Creatine"
+	PILLE = "PILLE", "Pille"
+
+
+class SupplementStatus(models.Model):
+	day = models.DateField(db_index=True)
+	person = models.CharField(max_length=10, choices=DashboardPerson.choices)
+	supplement = models.CharField(max_length=20, choices=DashboardSupplement.choices)
+	taken = models.BooleanField(default=False)
+
+	updated_at = models.DateTimeField(auto_now=True)
+	updated_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="supplement_updates",
+	)
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=["day", "person", "supplement"], name="unique_supplement_per_day"),
+		]
+		ordering = ["-day", "person", "supplement"]
+
+	def __str__(self) -> str:
+		return f"{self.day} {self.person} {self.supplement}: {'taken' if self.taken else 'not taken'}"
+
+
 class ShoppingItem(models.Model):
 	text = models.CharField(max_length=200)
 	checked = models.BooleanField(default=False)

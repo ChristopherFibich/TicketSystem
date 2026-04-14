@@ -10,7 +10,19 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import TicketForm
-from .models import Completion, FeedTime, PetFeedStatus, PetType, ShoppingItem, Tag, Ticket, TicketStatus
+from .models import (
+	Completion,
+	DashboardPerson,
+	DashboardSupplement,
+	FeedTime,
+	PetFeedStatus,
+	PetType,
+	ShoppingItem,
+	SupplementStatus,
+	Tag,
+	Ticket,
+	TicketStatus,
+)
 
 AuthUser = get_user_model()
 
@@ -33,7 +45,7 @@ def _ticket_bg_class(ticket: Ticket, now) -> str:
 
 def home(request: HttpRequest) -> HttpResponse:
 	if request.user.is_authenticated:
-		return redirect("pets")
+		return redirect("dashboard")
 	return redirect("login")
 
 
@@ -202,39 +214,82 @@ def help_page(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def pets(request: HttpRequest) -> HttpResponse:
+
+def dashboard(request: HttpRequest) -> HttpResponse:
 	today = timezone.localdate()
 
 	def _get_row(pet: str, time: str) -> PetFeedStatus:
 		obj, _ = PetFeedStatus.objects.get_or_create(day=today, pet=pet, time=time, defaults={"fed": False})
 		return obj
 
+	def _get_supp(person: str, supplement: str) -> SupplementStatus:
+		obj, _ = SupplementStatus.objects.get_or_create(
+			day=today,
+			person=person,
+			supplement=supplement,
+			defaults={"taken": False},
+		)
+		return obj
+
 	if request.method == "POST":
 		pet = (request.POST.get("pet") or "").strip()
 		time = (request.POST.get("time") or "").strip()
-		if pet in {PetType.CAT, PetType.DOG} and time in {FeedTime.MORNING, FeedTime.EVENING}:
-			row = _get_row(pet, time)
-			row.fed = not bool(row.fed)
-			row.updated_by = request.user
-			row.save(update_fields=["fed", "updated_by", "updated_at"])
-		return redirect("pets")
+		person = (request.POST.get("person") or "").strip()
+		supplement = (request.POST.get("supplement") or "").strip()
+
+		if pet and time:
+			if pet in {PetType.CAT, PetType.DOG} and time in {FeedTime.MORNING, FeedTime.EVENING}:
+				row = _get_row(pet, time)
+				row.fed = not bool(row.fed)
+				row.updated_by = request.user
+				row.save(update_fields=["fed", "updated_by", "updated_at"])
+			return redirect("dashboard")
+
+		if person and supplement:
+			if person in {DashboardPerson.CHRIS, DashboardPerson.MICHELLE} and supplement in {
+				DashboardSupplement.MULTIVITAMIN,
+				DashboardSupplement.VITAMIN_B12,
+				DashboardSupplement.CREATINE,
+				DashboardSupplement.PILLE,
+			}:
+				row = _get_supp(person, supplement)
+				row.taken = not bool(row.taken)
+				row.updated_by = request.user
+				row.save(update_fields=["taken", "updated_by", "updated_at"])
+			return redirect("dashboard")
+
+		return redirect("dashboard")
 
 	cat_morning = _get_row(PetType.CAT, FeedTime.MORNING)
 	cat_evening = _get_row(PetType.CAT, FeedTime.EVENING)
 	dog_morning = _get_row(PetType.DOG, FeedTime.MORNING)
 	dog_evening = _get_row(PetType.DOG, FeedTime.EVENING)
 
+	chris_multivitamin = _get_supp(DashboardPerson.CHRIS, DashboardSupplement.MULTIVITAMIN)
+	chris_vitamin_b12 = _get_supp(DashboardPerson.CHRIS, DashboardSupplement.VITAMIN_B12)
+	chris_creatine = _get_supp(DashboardPerson.CHRIS, DashboardSupplement.CREATINE)
+	michelle_pille = _get_supp(DashboardPerson.MICHELLE, DashboardSupplement.PILLE)
+
 	return render(
 		request,
-		"tickets/pets.html",
+		"tickets/dashboard.html",
 		{
 			"today": today,
 			"cat_morning": cat_morning,
 			"cat_evening": cat_evening,
 			"dog_morning": dog_morning,
 			"dog_evening": dog_evening,
+			"chris_multivitamin": chris_multivitamin,
+			"chris_vitamin_b12": chris_vitamin_b12,
+			"chris_creatine": chris_creatine,
+			"michelle_pille": michelle_pille,
 		},
 	)
+
+
+@login_required
+def pets(request: HttpRequest) -> HttpResponse:
+	return redirect("dashboard")
 
 
 @login_required

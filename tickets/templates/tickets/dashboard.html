@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Dashboard</h1>
+    <div class="text-body-secondary small">{{ today|date:"Y-m-d" }}</div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="CAT">
+        <input type="hidden" name="time" value="AM">
+        <button type="submit" class="btn btn-lg {% if cat_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Cats · Morning · {% if cat_morning.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="CAT">
+        <input type="hidden" name="time" value="PM">
+        <button type="submit" class="btn btn-lg {% if cat_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Cats · Evening · {% if cat_evening.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="DOG">
+        <input type="hidden" name="time" value="AM">
+        <button type="submit" class="btn btn-lg {% if dog_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Dog · Morning · {% if dog_morning.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+
+    <div class="col-12 col-md-6">
+      <form method="post" class="d-grid">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="DOG">
+        <input type="hidden" name="time" value="PM">
+        <button type="submit" class="btn btn-lg {% if dog_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
+          Dog · Evening · {% if dog_evening.fed %}Fed{% else %}Not fed{% endif %}
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Chris</h2>
+
+          <div class="d-grid gap-2">
+            <form method="post" class="d-grid">
+              {% csrf_token %}
+              <input type="hidden" name="person" value="CHRIS">
+              <input type="hidden" name="supplement" value="MULTIVITAMIN">
+              <button type="submit" class="btn btn-lg {% if chris_multivitamin.taken %}btn-success{% else %}btn-danger{% endif %}">
+                Multivitamin · {% if chris_multivitamin.taken %}Taken{% else %}Not taken{% endif %}
+              </button>
+            </form>
+
+            <form method="post" class="d-grid">
+              {% csrf_token %}
+              <input type="hidden" name="person" value="CHRIS">
+              <input type="hidden" name="supplement" value="VITAMIN_B12">
+              <button type="submit" class="btn btn-lg {% if chris_vitamin_b12.taken %}btn-success{% else %}btn-danger{% endif %}">
+                Vitamin B12 · {% if chris_vitamin_b12.taken %}Taken{% else %}Not taken{% endif %}
+              </button>
+            </form>
+
+            <form method="post" class="d-grid">
+              {% csrf_token %}
+              <input type="hidden" name="person" value="CHRIS">
+              <input type="hidden" name="supplement" value="CREATINE">
+              <button type="submit" class="btn btn-lg {% if chris_creatine.taken %}btn-success{% else %}btn-danger{% endif %}">
+                Creatine · {% if chris_creatine.taken %}Taken{% else %}Not taken{% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-body">
+          <h2 class="h5 mb-3">Michelle</h2>
+
+          <div class="d-grid gap-2">
+            <form method="post" class="d-grid">
+              {% csrf_token %}
+              <input type="hidden" name="person" value="MICHELLE">
+              <input type="hidden" name="supplement" value="PILLE">
+              <button type="submit" class="btn btn-lg {% if michelle_pille.taken %}btn-success{% else %}btn-danger{% endif %}">
+                Pille · {% if michelle_pille.taken %}Taken{% else %}Not taken{% endif %}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

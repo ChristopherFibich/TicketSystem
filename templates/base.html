@@ -37,7 +37,7 @@
           <ul class="navbar-nav ms-auto">
             {% if user.is_authenticated %}
               <li class="nav-item"><a class="nav-link" href="{% url 'my_tickets' %}">My tickets</a></li>
-              <li class="nav-item"><a class="nav-link" href="{% url 'pets' %}">Pets</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'einkaufsliste' %}">Einkaufsliste</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'all_tickets' %}">All tickets</a></li>
             {% endif %}
