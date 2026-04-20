@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncMonth
+from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -299,6 +300,30 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 		shopping_count_total = ShoppingItem.objects.count()
 		shopping_count_open = ShoppingItem.objects.filter(checked=False).count()
 		shopping_items = list(ShoppingItem.objects.all().order_by("checked", "-created_at")[:10])
+
+	if DashboardWidgetKind.TICKETS_STALE in widget_kinds:
+		now = timezone.now()
+		base_qs = (
+			Ticket.objects.select_related("assignee", "template")
+			.exclude(status=TicketStatus.DONE)
+			.annotate(start_at=Coalesce("assigned_at", "created_at"))
+		)
+		for w in widgets:
+			if w.kind != DashboardWidgetKind.TICKETS_STALE:
+				continue
+			min_days = int(getattr(w, "tickets_min_age_days", 7) or 7)
+			limit = int(getattr(w, "tickets_limit", 10) or 10)
+			min_days = max(0, min(3650, min_days))
+			limit = max(1, min(100, limit))
+			cutoff = now - timedelta(days=min_days)
+			tickets = list(base_qs.filter(start_at__lte=cutoff).order_by("start_at")[:limit])
+			for t in tickets:
+				start = getattr(t, "start_at", None) or t.assigned_at or t.created_at
+				if start:
+					t.age_days = int((now - start).total_seconds() // 86400)
+				else:
+					t.age_days = None
+			w.tickets = tickets
 
 	return render(
 		request,

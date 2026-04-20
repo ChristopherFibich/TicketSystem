@@ -305,6 +305,7 @@ class DashboardWidgetKind(models.TextChoices):
 	PET_FEED = "PET_FEED", "Pet feed switches"
 	TOGGLES = "TOGGLES", "Custom switches"
 	SHOPPING_PREVIEW = "SHOPPING_PREVIEW", "Shopping list preview"
+	TICKETS_STALE = "TICKETS_STALE", "Tickets: not done for N days"
 
 
 class DashboardWidget(models.Model):
@@ -312,6 +313,10 @@ class DashboardWidget(models.Model):
 	title = models.CharField(max_length=100, blank=True)
 	order = models.PositiveSmallIntegerField(default=10)
 	enabled = models.BooleanField(default=True)
+
+	# Widget config (used by some kinds)
+	tickets_min_age_days = models.PositiveSmallIntegerField(default=7)
+	tickets_limit = models.PositiveSmallIntegerField(default=10)
 
 	class Meta:
 		ordering = ["order", "id"]

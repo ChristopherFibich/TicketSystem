@@ -104,6 +104,38 @@
           {% endif %}
         </div>
       </div>
+    {% elif widget.kind == 'TICKETS_STALE' %}
+      <div class="card mb-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between">
+            <h2 class="h5 mb-0">{% if widget.title %}{{ widget.title }}{% else %}Stale tickets{% endif %}</h2>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'all_tickets' %}">Open</a>
+          </div>
+          <div class="text-body-secondary small mt-1">Not done for ≥ {{ widget.tickets_min_age_days }} days</div>
+
+          {% if widget.tickets %}
+            <div class="list-group list-group-flush mt-2">
+              {% for t in widget.tickets %}
+                <a class="list-group-item list-group-item-action px-0" href="{% url 'ticket_detail' t.pk %}">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                      <div class="fw-semibold">{{ t.title }}</div>
+                      <div class="small text-body-secondary">
+                        {% if t.assignee %}{{ t.assignee.username }} · {% endif %}{{ t.status }}
+                      </div>
+                    </div>
+                    {% if t.age_days != None %}
+                      <span class="badge text-bg-secondary">{{ t.age_days }}d</span>
+                    {% endif %}
+                  </div>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="text-body-secondary mt-2">No tickets match.</div>
+          {% endif %}
+        </div>
+      </div>
     {% endif %}
   {% endfor %}
 {% endblock %}

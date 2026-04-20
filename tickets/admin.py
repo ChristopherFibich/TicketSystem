@@ -217,8 +217,8 @@ class CompletionAdmin(admin.ModelAdmin):
 
 @admin.register(DashboardWidget)
 class DashboardWidgetAdmin(admin.ModelAdmin):
-	list_display = ["kind", "title", "order", "enabled"]
-	list_editable = ["title", "order", "enabled"]
+	list_display = ["kind", "title", "order", "enabled", "tickets_min_age_days", "tickets_limit"]
+	list_editable = ["title", "order", "enabled", "tickets_min_age_days", "tickets_limit"]
 	list_filter = ["enabled", "kind"]
 	ordering = ["order", "id"]
 
