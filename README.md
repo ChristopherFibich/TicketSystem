@@ -18,6 +18,7 @@ Timezone defaults to `Europe/Berlin` (override with `DJANGO_TIME_ZONE`).
 Open:
 - On the same machine: http://127.0.0.1:8000/
 - From phones/other devices: http://<server-ip>:8000/
+- find server ip: `ip addr` 
 
 If you see `DisallowedHost`, either keep `DJANGO_DEBUG=1` for dev (allows all hosts),
 or set `DJANGO_ALLOWED_HOSTS` to include your server IP, e.g.
