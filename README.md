@@ -98,7 +98,11 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 python manage.py createsuperuser
 ```
-
+Migrate after patch
+```
+set -a; . /etc/ticketsystem.env; set +a
+sudo -u mango --preserve-env=DJANGO_DB_PATH,DJANGO_SECRET_KEY,DJANGO_DEBUG,DJANGO_ALLOWED_HOSTS,DJANGO_TIME_ZONE /opt/TicketSystem/.venv/bin/python /opt/TicketSystem/manage.py migrate
+```
 Create a directory for the database if you want to keep it outside the repo:
 
 ```bash
@@ -124,40 +128,31 @@ All are read from the process environment; none require a config file.
 Save as `/etc/systemd/system/ticketsystem.service`:
 
 ```ini
+
 [Unit]
-Description=Household Ticket System (Gunicorn/Django)
-After=network.target
+Description=TicketSystem
 
 [Service]
 Type=simple
-User=ticketsystem
-Group=ticketsystem
-WorkingDirectory=/opt/ticketsystem
+User=YOURUSER
+Group=YOURUSERGROUP
+WorkingDirectory=YOURWORKINGDIR (/opt/ticketsystem)
 
-# Adjust SECRET_KEY and ALLOWED_HOSTS for your network
+
+EnvironmentFile=/etc/ticketsystem.env
 Environment="DJANGO_DEBUG=0"
 Environment="DJANGO_SECRET_KEY=replace-with-a-real-secret"
 Environment="DJANGO_ALLOWED_HOSTS=192.168.1.x,127.0.0.1,localhost"
 Environment="DJANGO_TIME_ZONE=Europe/Berlin"
 Environment="DJANGO_DB_PATH=/var/lib/ticketsystem/db.sqlite3"
 
-# Run migrations automatically on every start (idempotent)
-ExecStartPre=/opt/ticketsystem/.venv/bin/python manage.py migrate --noinput
-ExecStart=/opt/ticketsystem/.venv/bin/gunicorn \
-    householdtickets.wsgi:application \
-    --bind 0.0.0.0:8000 \
-    --workers 2 \
-    --access-logfile - \
-    --error-logfile -
-
+ExecStart=/opt/TicketSystem/.venv/bin/gunicorn householdtickets.wsgi:application --bind 0.0.0.0:8000
 Restart=on-failure
-RestartSec=5s
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=ticketsystem
 
 [Install]
 WantedBy=multi-user.target
+~                             
+
 ```
 
 Enable and start:
@@ -166,7 +161,6 @@ Enable and start:
 sudo systemctl daemon-reload
 sudo systemctl enable ticketsystem
 sudo systemctl start ticketsystem
-sudo journalctl -u ticketsystem -f   # follow logs
 ```
 
 Static files are served directly by WhiteNoise through Gunicorn — no separate nginx is required.
