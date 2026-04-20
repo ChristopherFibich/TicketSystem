@@ -12,13 +12,15 @@ from django.utils import timezone
 from .forms import TicketForm
 from .models import (
 	Completion,
-	DashboardPerson,
-	DashboardSupplement,
+	DashboardToggle,
+	DashboardToggleGroup,
+	DashboardToggleStatus,
+	DashboardWidget,
+	DashboardWidgetKind,
 	FeedTime,
 	PetFeedStatus,
 	PetType,
 	ShoppingItem,
-	SupplementStatus,
 	Tag,
 	Ticket,
 	TicketStatus,
@@ -217,25 +219,27 @@ def help_page(request: HttpRequest) -> HttpResponse:
 
 def dashboard(request: HttpRequest) -> HttpResponse:
 	today = timezone.localdate()
+	widgets = list(DashboardWidget.objects.filter(enabled=True).order_by("order", "id"))
+	if not widgets:
+		widgets = [
+			DashboardWidget(kind=DashboardWidgetKind.PET_FEED, title="", order=10, enabled=True),
+			DashboardWidget(kind=DashboardWidgetKind.TOGGLES, title="", order=20, enabled=True),
+		]
+	widget_kinds = {w.kind for w in widgets}
 
 	def _get_row(pet: str, time: str) -> PetFeedStatus:
 		obj, _ = PetFeedStatus.objects.get_or_create(day=today, pet=pet, time=time, defaults={"fed": False})
 		return obj
 
-	def _get_supp(person: str, supplement: str) -> SupplementStatus:
-		obj, _ = SupplementStatus.objects.get_or_create(
-			day=today,
-			person=person,
-			supplement=supplement,
-			defaults={"taken": False},
-		)
-		return obj
+	def _get_toggle_status(toggle_id: int) -> DashboardToggleStatus | None:
+		if toggle_id <= 0:
+			return None
+		return DashboardToggleStatus.objects.filter(day=today, toggle_id=toggle_id).select_related("toggle").first()
 
 	if request.method == "POST":
 		pet = (request.POST.get("pet") or "").strip()
 		time = (request.POST.get("time") or "").strip()
-		person = (request.POST.get("person") or "").strip()
-		supplement = (request.POST.get("supplement") or "").strip()
+		toggle_id_raw = (request.POST.get("toggle_id") or "").strip()
 
 		if pet and time:
 			if pet in {PetType.CAT, PetType.DOG} and time in {FeedTime.MORNING, FeedTime.EVENING}:
@@ -245,44 +249,73 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 				row.save(update_fields=["fed", "updated_by", "updated_at"])
 			return redirect("dashboard")
 
-		if person and supplement:
-			if person in {DashboardPerson.CHRIS, DashboardPerson.MICHELLE} and supplement in {
-				DashboardSupplement.MULTIVITAMIN,
-				DashboardSupplement.VITAMIN_B12,
-				DashboardSupplement.CREATINE,
-				DashboardSupplement.PILLE,
-			}:
-				row = _get_supp(person, supplement)
-				row.taken = not bool(row.taken)
+		if toggle_id_raw.isdigit():
+			toggle_id = int(toggle_id_raw)
+			if not DashboardToggle.objects.filter(id=toggle_id, enabled=True, group__enabled=True).exists():
+				return redirect("dashboard")
+			row = _get_toggle_status(toggle_id)
+			if row is None:
+				# Create new status row (toggle exists check is implied by FK on create).
+				row = DashboardToggleStatus.objects.create(day=today, toggle_id=toggle_id, on=True, updated_by=request.user)
+			else:
+				row.on = not bool(row.on)
 				row.updated_by = request.user
-				row.save(update_fields=["taken", "updated_by", "updated_at"])
+				row.save(update_fields=["on", "updated_by", "updated_at"])
 			return redirect("dashboard")
 
 		return redirect("dashboard")
 
-	cat_morning = _get_row(PetType.CAT, FeedTime.MORNING)
-	cat_evening = _get_row(PetType.CAT, FeedTime.EVENING)
-	dog_morning = _get_row(PetType.DOG, FeedTime.MORNING)
-	dog_evening = _get_row(PetType.DOG, FeedTime.EVENING)
+	cat_morning = cat_evening = dog_morning = dog_evening = None
+	if DashboardWidgetKind.PET_FEED in widget_kinds:
+		cat_morning = _get_row(PetType.CAT, FeedTime.MORNING)
+		cat_evening = _get_row(PetType.CAT, FeedTime.EVENING)
+		dog_morning = _get_row(PetType.DOG, FeedTime.MORNING)
+		dog_evening = _get_row(PetType.DOG, FeedTime.EVENING)
 
-	chris_multivitamin = _get_supp(DashboardPerson.CHRIS, DashboardSupplement.MULTIVITAMIN)
-	chris_vitamin_b12 = _get_supp(DashboardPerson.CHRIS, DashboardSupplement.VITAMIN_B12)
-	chris_creatine = _get_supp(DashboardPerson.CHRIS, DashboardSupplement.CREATINE)
-	michelle_pille = _get_supp(DashboardPerson.MICHELLE, DashboardSupplement.PILLE)
+	toggle_groups = []
+	status_by_toggle_id: dict[int, DashboardToggleStatus] = {}
+	if DashboardWidgetKind.TOGGLES in widget_kinds:
+		toggle_groups = list(
+			DashboardToggleGroup.objects.filter(enabled=True)
+			.prefetch_related("toggles")
+			.order_by("order", "id")
+		)
+		toggle_ids = []
+		for group in toggle_groups:
+			group.enabled_toggles = [t for t in list(group.toggles.all().order_by("order", "id")) if t.enabled]
+			toggle_ids.extend([t.id for t in group.enabled_toggles])
+		if toggle_ids:
+			statuses = DashboardToggleStatus.objects.filter(day=today, toggle_id__in=toggle_ids).select_related("toggle")
+			status_by_toggle_id = {s.toggle_id: s for s in statuses}
+		for group in toggle_groups:
+			for t in getattr(group, "enabled_toggles", []):
+				s = status_by_toggle_id.get(t.id)
+				t.is_on = bool(s.on) if s else False
+
+	shopping_items = []
+	shopping_count_total = 0
+	shopping_count_open = 0
+	if DashboardWidgetKind.SHOPPING_PREVIEW in widget_kinds:
+		shopping_count_total = ShoppingItem.objects.count()
+		shopping_count_open = ShoppingItem.objects.filter(checked=False).count()
+		shopping_items = list(ShoppingItem.objects.all().order_by("checked", "-created_at")[:10])
 
 	return render(
 		request,
 		"tickets/dashboard.html",
 		{
 			"today": today,
+			"widgets": widgets,
+			"widget_kinds": widget_kinds,
 			"cat_morning": cat_morning,
 			"cat_evening": cat_evening,
 			"dog_morning": dog_morning,
 			"dog_evening": dog_evening,
-			"chris_multivitamin": chris_multivitamin,
-			"chris_vitamin_b12": chris_vitamin_b12,
-			"chris_creatine": chris_creatine,
-			"michelle_pille": michelle_pille,
+			"toggle_groups": toggle_groups,
+			"status_by_toggle_id": status_by_toggle_id,
+			"shopping_items": shopping_items,
+			"shopping_count_total": shopping_count_total,
+			"shopping_count_open": shopping_count_open,
 		},
 	)
 

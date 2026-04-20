@@ -301,6 +301,79 @@ class SupplementStatus(models.Model):
 		return f"{self.day} {self.person} {self.supplement}: {'taken' if self.taken else 'not taken'}"
 
 
+class DashboardWidgetKind(models.TextChoices):
+	PET_FEED = "PET_FEED", "Pet feed switches"
+	TOGGLES = "TOGGLES", "Custom switches"
+	SHOPPING_PREVIEW = "SHOPPING_PREVIEW", "Shopping list preview"
+
+
+class DashboardWidget(models.Model):
+	kind = models.CharField(max_length=30, choices=DashboardWidgetKind.choices)
+	title = models.CharField(max_length=100, blank=True)
+	order = models.PositiveSmallIntegerField(default=10)
+	enabled = models.BooleanField(default=True)
+
+	class Meta:
+		ordering = ["order", "id"]
+
+	def __str__(self) -> str:
+		name = self.get_kind_display() if hasattr(self, "get_kind_display") else self.kind
+		return self.title or name
+
+
+class DashboardToggleGroup(models.Model):
+	title = models.CharField(max_length=100)
+	order = models.PositiveSmallIntegerField(default=10)
+	enabled = models.BooleanField(default=True)
+
+	class Meta:
+		ordering = ["order", "id"]
+
+	def __str__(self) -> str:
+		return self.title
+
+
+class DashboardToggle(models.Model):
+	group = models.ForeignKey(DashboardToggleGroup, on_delete=models.CASCADE, related_name="toggles")
+	slug = models.SlugField(max_length=50)
+	label = models.CharField(max_length=100)
+	order = models.PositiveSmallIntegerField(default=10)
+	enabled = models.BooleanField(default=True)
+
+	class Meta:
+		ordering = ["order", "id"]
+		constraints = [
+			models.UniqueConstraint(fields=["group", "slug"], name="unique_toggle_slug_per_group"),
+		]
+
+	def __str__(self) -> str:
+		return f"{self.group}: {self.label}"
+
+
+class DashboardToggleStatus(models.Model):
+	day = models.DateField(db_index=True)
+	toggle = models.ForeignKey(DashboardToggle, on_delete=models.CASCADE, related_name="statuses")
+	on = models.BooleanField(default=False)
+
+	updated_at = models.DateTimeField(auto_now=True)
+	updated_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="dashboard_toggle_updates",
+	)
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=["day", "toggle"], name="unique_dashboard_toggle_per_day"),
+		]
+		ordering = ["-day", "toggle_id"]
+
+	def __str__(self) -> str:
+		return f"{self.day} {self.toggle}: {'on' if self.on else 'off'}"
+
+
 class ShoppingItem(models.Model):
 	text = models.CharField(max_length=200)
 	checked = models.BooleanField(default=False)

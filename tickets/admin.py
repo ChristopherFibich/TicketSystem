@@ -5,7 +5,17 @@ from django.http import HttpRequest
 from django.shortcuts import redirect, render
 from django.urls import path
 
-from .models import Completion, Tag, Ticket, TicketTemplate, TicketTemplateEligibility
+from .models import (
+	Completion,
+	DashboardToggle,
+	DashboardToggleGroup,
+	DashboardToggleStatus,
+	DashboardWidget,
+	Tag,
+	Ticket,
+	TicketTemplate,
+	TicketTemplateEligibility,
+)
 from .scheduling import next_scheduled_for
 
 
@@ -203,3 +213,44 @@ class CompletionAdmin(admin.ModelAdmin):
 	list_display = ["ticket", "completed_by", "points_awarded", "completed_at", "time_to_complete_seconds"]
 	list_filter = ["completed_by"]
 	autocomplete_fields = ["ticket", "completed_by"]
+
+
+@admin.register(DashboardWidget)
+class DashboardWidgetAdmin(admin.ModelAdmin):
+	list_display = ["kind", "title", "order", "enabled"]
+	list_editable = ["title", "order", "enabled"]
+	list_filter = ["enabled", "kind"]
+	ordering = ["order", "id"]
+
+
+class DashboardToggleInline(admin.TabularInline):
+	model = DashboardToggle
+	extra = 0
+	fields = ["label", "slug", "order", "enabled"]
+	ordering = ["order", "id"]
+	show_change_link = True
+
+
+@admin.register(DashboardToggleGroup)
+class DashboardToggleGroupAdmin(admin.ModelAdmin):
+	list_display = ["title", "order", "enabled"]
+	list_editable = ["order", "enabled"]
+	ordering = ["order", "id"]
+	inlines = [DashboardToggleInline]
+
+
+@admin.register(DashboardToggle)
+class DashboardToggleAdmin(admin.ModelAdmin):
+	list_display = ["label", "group", "slug", "order", "enabled"]
+	list_filter = ["enabled", "group"]
+	list_editable = ["order", "enabled"]
+	ordering = ["group__order", "group_id", "order", "id"]
+	search_fields = ["label", "slug", "group__title"]
+
+
+@admin.register(DashboardToggleStatus)
+class DashboardToggleStatusAdmin(admin.ModelAdmin):
+	list_display = ["day", "toggle", "on", "updated_at", "updated_by"]
+	list_filter = ["day", "toggle__group"]
+	search_fields = ["toggle__label", "toggle__group__title"]
+	ordering = ["-day", "toggle_id"]

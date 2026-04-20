@@ -8,107 +8,102 @@
     <div class="text-body-secondary small">{{ today|date:"Y-m-d" }}</div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-12 col-md-6">
-      <form method="post" class="d-grid">
-        {% csrf_token %}
-        <input type="hidden" name="pet" value="CAT">
-        <input type="hidden" name="time" value="AM">
-        <button type="submit" class="btn btn-lg {% if cat_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
-          Cats · Morning · {% if cat_morning.fed %}Fed{% else %}Not fed{% endif %}
-        </button>
-      </form>
-    </div>
+  {% for widget in widgets %}
+    {% if widget.kind == 'PET_FEED' %}
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+          <form method="post" class="d-grid">
+            {% csrf_token %}
+            <input type="hidden" name="pet" value="CAT">
+            <input type="hidden" name="time" value="AM">
+            <button type="submit" class="btn btn-lg {% if cat_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
+              Cats · Morning · {% if cat_morning.fed %}Fed{% else %}Not fed{% endif %}
+            </button>
+          </form>
+        </div>
 
-    <div class="col-12 col-md-6">
-      <form method="post" class="d-grid">
-        {% csrf_token %}
-        <input type="hidden" name="pet" value="CAT">
-        <input type="hidden" name="time" value="PM">
-        <button type="submit" class="btn btn-lg {% if cat_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
-          Cats · Evening · {% if cat_evening.fed %}Fed{% else %}Not fed{% endif %}
-        </button>
-      </form>
-    </div>
+        <div class="col-12 col-md-6">
+          <form method="post" class="d-grid">
+            {% csrf_token %}
+            <input type="hidden" name="pet" value="CAT">
+            <input type="hidden" name="time" value="PM">
+            <button type="submit" class="btn btn-lg {% if cat_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
+              Cats · Evening · {% if cat_evening.fed %}Fed{% else %}Not fed{% endif %}
+            </button>
+          </form>
+        </div>
 
-    <div class="col-12 col-md-6">
-      <form method="post" class="d-grid">
-        {% csrf_token %}
-        <input type="hidden" name="pet" value="DOG">
-        <input type="hidden" name="time" value="AM">
-        <button type="submit" class="btn btn-lg {% if dog_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
-          Dog · Morning · {% if dog_morning.fed %}Fed{% else %}Not fed{% endif %}
-        </button>
-      </form>
-    </div>
+        <div class="col-12 col-md-6">
+          <form method="post" class="d-grid">
+            {% csrf_token %}
+            <input type="hidden" name="pet" value="DOG">
+            <input type="hidden" name="time" value="AM">
+            <button type="submit" class="btn btn-lg {% if dog_morning.fed %}btn-success{% else %}btn-danger{% endif %}">
+              Dog · Morning · {% if dog_morning.fed %}Fed{% else %}Not fed{% endif %}
+            </button>
+          </form>
+        </div>
 
-    <div class="col-12 col-md-6">
-      <form method="post" class="d-grid">
-        {% csrf_token %}
-        <input type="hidden" name="pet" value="DOG">
-        <input type="hidden" name="time" value="PM">
-        <button type="submit" class="btn btn-lg {% if dog_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
-          Dog · Evening · {% if dog_evening.fed %}Fed{% else %}Not fed{% endif %}
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <div class="row g-3 mt-1">
-    <div class="col-12 col-lg-6">
-      <div class="card">
-        <div class="card-body">
-          <h2 class="h5 mb-3">Chris</h2>
-
-          <div class="d-grid gap-2">
-            <form method="post" class="d-grid">
-              {% csrf_token %}
-              <input type="hidden" name="person" value="CHRIS">
-              <input type="hidden" name="supplement" value="MULTIVITAMIN">
-              <button type="submit" class="btn btn-lg {% if chris_multivitamin.taken %}btn-success{% else %}btn-danger{% endif %}">
-                Multivitamin · {% if chris_multivitamin.taken %}Taken{% else %}Not taken{% endif %}
-              </button>
-            </form>
-
-            <form method="post" class="d-grid">
-              {% csrf_token %}
-              <input type="hidden" name="person" value="CHRIS">
-              <input type="hidden" name="supplement" value="VITAMIN_B12">
-              <button type="submit" class="btn btn-lg {% if chris_vitamin_b12.taken %}btn-success{% else %}btn-danger{% endif %}">
-                Vitamin B12 · {% if chris_vitamin_b12.taken %}Taken{% else %}Not taken{% endif %}
-              </button>
-            </form>
-
-            <form method="post" class="d-grid">
-              {% csrf_token %}
-              <input type="hidden" name="person" value="CHRIS">
-              <input type="hidden" name="supplement" value="CREATINE">
-              <button type="submit" class="btn btn-lg {% if chris_creatine.taken %}btn-success{% else %}btn-danger{% endif %}">
-                Creatine · {% if chris_creatine.taken %}Taken{% else %}Not taken{% endif %}
-              </button>
-            </form>
-          </div>
+        <div class="col-12 col-md-6">
+          <form method="post" class="d-grid">
+            {% csrf_token %}
+            <input type="hidden" name="pet" value="DOG">
+            <input type="hidden" name="time" value="PM">
+            <button type="submit" class="btn btn-lg {% if dog_evening.fed %}btn-success{% else %}btn-danger{% endif %}">
+              Dog · Evening · {% if dog_evening.fed %}Fed{% else %}Not fed{% endif %}
+            </button>
+          </form>
         </div>
       </div>
-    </div>
+    {% elif widget.kind == 'TOGGLES' %}
+      <div class="row g-3 mb-3">
+        {% for group in toggle_groups %}
+          {% if group.enabled_toggles %}
+            <div class="col-12 col-lg-6">
+              <div class="card">
+                <div class="card-body">
+                  <h2 class="h5 mb-3">{{ group.title }}</h2>
 
-    <div class="col-12 col-lg-6">
-      <div class="card">
+                  <div class="d-grid gap-2">
+                    {% for t in group.enabled_toggles %}
+                      <form method="post" class="d-grid">
+                        {% csrf_token %}
+                        <input type="hidden" name="toggle_id" value="{{ t.id }}">
+                        <button type="submit" class="btn btn-lg {% if t.is_on %}btn-success{% else %}btn-danger{% endif %}">
+                          {{ t.label }} · {% if t.is_on %}Taken{% else %}Not taken{% endif %}
+                        </button>
+                      </form>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% elif widget.kind == 'SHOPPING_PREVIEW' %}
+      <div class="card mb-3">
         <div class="card-body">
-          <h2 class="h5 mb-3">Michelle</h2>
-
-          <div class="d-grid gap-2">
-            <form method="post" class="d-grid">
-              {% csrf_token %}
-              <input type="hidden" name="person" value="MICHELLE">
-              <input type="hidden" name="supplement" value="PILLE">
-              <button type="submit" class="btn btn-lg {% if michelle_pille.taken %}btn-success{% else %}btn-danger{% endif %}">
-                Pille · {% if michelle_pille.taken %}Taken{% else %}Not taken{% endif %}
-              </button>
-            </form>
+          <div class="d-flex align-items-center justify-content-between">
+            <h2 class="h5 mb-0">Shopping list</h2>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'einkaufsliste' %}">Open</a>
           </div>
+          <div class="text-body-secondary small mt-1">Open: {{ shopping_count_open }} / {{ shopping_count_total }}</div>
+
+          {% if shopping_items %}
+            <ul class="list-group list-group-flush mt-2">
+              {% for item in shopping_items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                  <span class="{% if item.checked %}text-body-secondary text-decoration-line-through{% endif %}">{{ item.text }}</span>
+                  {% if item.checked %}<span class="badge text-bg-secondary">done</span>{% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="text-body-secondary mt-2">No items.</div>
+          {% endif %}
         </div>
       </div>
-    </div>
-  </div>
+    {% endif %}
+  {% endfor %}
 {% endblock %}
