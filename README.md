@@ -57,33 +57,7 @@ Example cron (nightly at 03:00):
 0 3 * * * cd /path/to/TicketSystem && /path/to/TicketSystem/.venv/bin/python manage.py spawn_recurring_tickets >> /path/to/TicketSystem/cron.log 2>&1
 ```
 
-## Docker (simple LAN deploy)
 
-```bash
-docker compose build
-docker compose up -d
-```
-
-Run migrations and create the admin user:
-
-```bash
-docker compose run --rm web python manage.py migrate
-docker compose run --rm web python manage.py createsuperuser
-```
-
-Run the spawner:
-
-```bash
-docker compose run --rm web python manage.py spawn_recurring_tickets
-```
-
-The SQLite DB persists in `./db/db.sqlite3`.
-
-## Notes
-- This is designed for LAN-only use. If you later expose it beyond your home network, add proper HTTPS + stronger hardening.
-- v2 ideas: charts, per-template stats, variable points, notifications.
-
----
 
 ## Production deployment (bare-metal / systemd)
 
