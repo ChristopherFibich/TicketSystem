@@ -10,6 +10,13 @@
     {{ form.non_field_errors }}
 
     <div class="mb-3">
+      <label class="form-label" for="id_template">Template</label>
+      {{ form.template }}
+      {{ form.template.errors }}
+      <div class="form-text">Pick a template and click “Load template” to prefill fields.</div>
+    </div>
+
+    <div class="mb-3">
       <label class="form-label" for="id_title">Title</label>
       {{ form.title }}
       {{ form.title.errors }}
@@ -49,6 +56,7 @@
 
     <div class="d-flex gap-2">
       <button class="btn btn-primary" type="submit">Create</button>
+      <button class="btn btn-outline-secondary" type="submit" name="load_template" value="1">Load template</button>
       <a class="btn btn-outline-secondary" href="{% url 'my_tickets' %}">Cancel</a>
     </div>
   </form>

@@ -18,12 +18,14 @@ from .models import (
 	DashboardToggleStatus,
 	DashboardWidget,
 	DashboardWidgetKind,
+	AssignmentMode,
 	FeedTime,
 	PetFeedStatus,
 	PetType,
 	ShoppingItem,
 	Tag,
 	Ticket,
+	TicketTemplate,
 	TicketStatus,
 )
 
@@ -81,6 +83,17 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def ticket_create(request: HttpRequest) -> HttpResponse:
+	if request.method == "POST" and "load_template" in request.POST:
+		template_id = (request.POST.get("template") or "").strip()
+		if template_id.isdigit():
+			return redirect(f"{request.path}?template={template_id}")
+		return redirect("ticket_create")
+
+	selected_template = None
+	selected_template_id = (request.GET.get("template") or "").strip()
+	if selected_template_id.isdigit():
+		selected_template = TicketTemplate.objects.filter(active=True, id=int(selected_template_id)).first()
+
 	if request.method == "POST":
 		form = TicketForm(request.POST)
 		if form.is_valid():
@@ -89,9 +102,26 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 			if ticket.assignee_id is None:
 				ticket.assignee = request.user
 			ticket.save()
+			form.save_m2m()
+			# If created from a template and no tags were selected, inherit template tags.
+			if ticket.template_id and ticket.tags.count() == 0:
+				ticket.tags.set(ticket.template.tags.all())
 			return redirect("ticket_detail", pk=ticket.pk)
 	else:
-		form = TicketForm(initial={"assignee": request.user, "status": TicketStatus.NEW})
+		initial = {"assignee": request.user, "status": TicketStatus.NEW}
+		if selected_template:
+			initial.update(
+				{
+					"template": selected_template.id,
+					"title": selected_template.title,
+					"description": selected_template.description,
+					"counts_for_score": selected_template.counts_for_score,
+					"tags": list(selected_template.tags.all()),
+				}
+			)
+			if selected_template.assignment_mode == AssignmentMode.FIXED and selected_template.fixed_assignee_id:
+				initial["assignee"] = selected_template.fixed_assignee_id
+		form = TicketForm(initial=initial)
 
 	return render(request, "tickets/ticket_form.html", {"form": form, "mode": "create"})
 

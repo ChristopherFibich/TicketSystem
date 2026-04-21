@@ -1,12 +1,24 @@
 from django import forms
 
-from .models import Ticket
+from .models import Ticket, TicketTemplate
 
 
 class TicketForm(forms.ModelForm):
+
+    template = forms.ModelChoiceField(
+        label="Template",
+        queryset=TicketTemplate.objects.none(),
+        required=False,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["template"].queryset = TicketTemplate.objects.filter(active=True).order_by("title")
+
     class Meta:
         model = Ticket
-        fields = ["title", "description", "assignee", "status", "counts_for_score", "tags"]
+        fields = ["template", "title", "description", "assignee", "status", "counts_for_score", "tags"]
         widgets = {
             "title": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"rows": 4, "class": "form-control"}),
