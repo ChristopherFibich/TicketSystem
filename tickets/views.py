@@ -316,6 +316,9 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 			.prefetch_related("toggles")
 			.order_by("order", "id")
 		)
+		show_30d_stats = any(
+			w.kind == DashboardWidgetKind.TOGGLES and bool(getattr(w, "toggles_show_30d_stats", False)) for w in widgets
+		)
 		toggle_ids = []
 		for group in toggle_groups:
 			group.enabled_toggles = [t for t in list(group.toggles.all().order_by("order", "id")) if t.enabled]
@@ -323,10 +326,29 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 		if toggle_ids:
 			statuses = DashboardToggleStatus.objects.filter(day=today, toggle_id__in=toggle_ids).select_related("toggle")
 			status_by_toggle_id = {s.toggle_id: s for s in statuses}
+
+		last30_on_by_toggle_id: dict[int, int] = {}
+		if show_30d_stats and toggle_ids:
+			start_day = today - timedelta(days=29)
+			rows = (
+				DashboardToggleStatus.objects.filter(
+					day__gte=start_day,
+					day__lte=today,
+					toggle_id__in=toggle_ids,
+					on=True,
+				)
+				.values("toggle_id")
+				.annotate(c=Count("id"))
+			)
+			last30_on_by_toggle_id = {r["toggle_id"]: int(r["c"] or 0) for r in rows}
+			last30_total = 30
 		for group in toggle_groups:
 			for t in getattr(group, "enabled_toggles", []):
 				s = status_by_toggle_id.get(t.id)
 				t.is_on = bool(s.on) if s else False
+				if show_30d_stats:
+					t.last30_on = last30_on_by_toggle_id.get(t.id, 0)
+					t.last30_total = last30_total
 
 	shopping_items = []
 	shopping_count_total = 0

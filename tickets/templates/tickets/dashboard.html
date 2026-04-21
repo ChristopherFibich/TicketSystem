@@ -70,7 +70,7 @@
                         {% csrf_token %}
                         <input type="hidden" name="toggle_id" value="{{ t.id }}">
                         <button type="submit" class="btn btn-lg {% if t.is_on %}btn-success{% else %}btn-danger{% endif %}">
-                          {{ t.label }} · {% if t.is_on %}Taken{% else %}Not taken{% endif %}
+                          {{ t.label }} · {% if t.is_on %}Taken{% else %}Not taken{% endif %}{% if widget.toggles_show_30d_stats %} · {{ t.last30_on }}/{{ t.last30_total }}{% endif %}
                         </button>
                       </form>
                     {% endfor %}

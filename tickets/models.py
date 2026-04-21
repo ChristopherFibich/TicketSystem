@@ -314,6 +314,9 @@ class DashboardWidget(models.Model):
 	order = models.PositiveSmallIntegerField(default=10)
 	enabled = models.BooleanField(default=True)
 
+	# Toggle widget config
+	toggles_show_30d_stats = models.BooleanField(default=False)
+
 	# Widget config (used by some kinds)
 	tickets_min_age_days = models.PositiveSmallIntegerField(default=7)
 	tickets_limit = models.PositiveSmallIntegerField(default=10)
