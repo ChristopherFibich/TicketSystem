@@ -10,7 +10,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import TicketForm
+from .forms import TicketCreateForm, TicketUpdateForm
 from .models import (
 	Completion,
 	DashboardToggle,
@@ -83,19 +83,37 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def ticket_create(request: HttpRequest) -> HttpResponse:
-	if request.method == "POST" and "load_template" in request.POST:
-		template_id = (request.POST.get("template") or "").strip()
-		if template_id.isdigit():
-			return redirect(f"{request.path}?template={template_id}")
-		return redirect("ticket_create")
-
 	selected_template = None
 	selected_template_id = (request.GET.get("template") or "").strip()
 	if selected_template_id.isdigit():
 		selected_template = TicketTemplate.objects.filter(active=True, id=int(selected_template_id)).first()
 
+	def _initial_from_template(tpl: TicketTemplate | None):
+		initial = {"assignee": request.user, "status": TicketStatus.NEW}
+		if tpl:
+			initial.update(
+				{
+					"template": tpl.id,
+					"title": tpl.title,
+					"description": tpl.description,
+					"counts_for_score": tpl.counts_for_score,
+					"tags": list(tpl.tags.values_list("id", flat=True)),
+				}
+			)
+			if tpl.assignment_mode == AssignmentMode.FIXED and tpl.fixed_assignee_id:
+				initial["assignee"] = tpl.fixed_assignee_id
+		return initial
+
 	if request.method == "POST":
-		form = TicketForm(request.POST)
+		if "load_template" in request.POST:
+			template_id = (request.POST.get("template") or "").strip()
+			tpl = None
+			if template_id.isdigit():
+				tpl = TicketTemplate.objects.filter(active=True, id=int(template_id)).first()
+			form = TicketCreateForm(initial=_initial_from_template(tpl))
+			return render(request, "tickets/ticket_form.html", {"form": form, "mode": "create"})
+
+		form = TicketCreateForm(request.POST)
 		if form.is_valid():
 			ticket = form.save(commit=False)
 			ticket.created_by = request.user
@@ -108,20 +126,7 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 				ticket.tags.set(ticket.template.tags.all())
 			return redirect("ticket_detail", pk=ticket.pk)
 	else:
-		initial = {"assignee": request.user, "status": TicketStatus.NEW}
-		if selected_template:
-			initial.update(
-				{
-					"template": selected_template.id,
-					"title": selected_template.title,
-					"description": selected_template.description,
-					"counts_for_score": selected_template.counts_for_score,
-					"tags": list(selected_template.tags.all()),
-				}
-			)
-			if selected_template.assignment_mode == AssignmentMode.FIXED and selected_template.fixed_assignee_id:
-				initial["assignee"] = selected_template.fixed_assignee_id
-		form = TicketForm(initial=initial)
+		form = TicketCreateForm(initial=_initial_from_template(selected_template))
 
 	return render(request, "tickets/ticket_form.html", {"form": form, "mode": "create"})
 
@@ -180,14 +185,14 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 			return redirect("ticket_detail", pk=ticket.pk)
 
 		prev_status = ticket.status
-		form = TicketForm(request.POST, instance=ticket)
+		form = TicketUpdateForm(request.POST, instance=ticket)
 		if form.is_valid():
 			ticket = form.save()
 			if prev_status != TicketStatus.DONE and ticket.status == TicketStatus.DONE:
 				ticket.mark_done(completed_by=request.user)
 			return redirect("ticket_detail", pk=ticket.pk)
 	else:
-		form = TicketForm(instance=ticket)
+		form = TicketUpdateForm(instance=ticket)
 
 	completions = list(ticket.completions.select_related("completed_by").order_by("completed_at"))
 	completion = completions[0] if completions else None
