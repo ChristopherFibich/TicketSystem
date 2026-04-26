@@ -32,11 +32,7 @@ Admin:
 2. Create recurring templates in `/admin/` → **Ticket templates**.
 3. For pool-based templates, add eligible users + weights via the inline table.
 
-Optional: seed a couple example templates (after creating your two users):
 
-```bash
-python manage.py seed_defaults --washer <usernameA> --folder <usernameB>
-```
 
 ## Recurring spawn (cron)
 The recurring ticket generator is a management command:
@@ -76,7 +72,7 @@ python manage.py createsuperuser
 Migrate after patch
 ```
 set -a; . /etc/ticketsystem.env; set +a
-sudo -u mango --preserve-env=DJANGO_DB_PATH,DJANGO_SECRET_KEY,DJANGO_DEBUG,DJANGO_ALLOWED_HOSTS,DJANGO_TIME_ZONE /opt/TicketSystem/.venv/bin/python /opt/TicketSystem/manage.py migrate
+sudo -u USER --preserve-env=DJANGO_DB_PATH,DJANGO_SECRET_KEY,DJANGO_DEBUG,DJANGO_ALLOWED_HOSTS,DJANGO_TIME_ZONE /PATH_TO_TICKETSYSTEM/.venv/bin/python /PATH_TO_TICKETSSSTEM/manage.py migrate
 ```
 Create a directory for the database if you want to keep it outside the repo:
 
@@ -89,14 +85,6 @@ sudo chown ticketsystem:ticketsystem /var/lib/ticketsystem
 
 All are read from the process environment; none require a config file.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `DJANGO_SECRET_KEY` | insecure dev value | Django secret — **must change in production** |
-| `DJANGO_DEBUG` | `True` | Set to `0` in production |
-| `DJANGO_ALLOWED_HOSTS` | `*` (when DEBUG), else `localhost,127.0.0.1` | Comma-separated hostnames / IPs |
-| `DJANGO_TIME_ZONE` | `Europe/Berlin` | Timezone for scheduling |
-| `DJANGO_DB_PATH` | `<repo>/db.sqlite3` | Path to the SQLite database file |
-| `DJANGO_LANGUAGE_CODE` | `en-us` | Django locale |
 
 ### systemd unit file
 
