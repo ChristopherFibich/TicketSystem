@@ -47,14 +47,6 @@ Dry-run:
 python manage.py spawn_recurring_tickets --dry-run
 ```
 
-Example cron (nightly at 03:00):
-
-```cron
-0 3 * * * cd /path/to/TicketSystem && /path/to/TicketSystem/.venv/bin/python manage.py spawn_recurring_tickets >> /path/to/TicketSystem/cron.log 2>&1
-```
-
-
-
 ## Production deployment (bare-metal / systemd)
 
 ### One-time setup
