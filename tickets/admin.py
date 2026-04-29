@@ -4,6 +4,8 @@ from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from django.shortcuts import redirect, render
 from django.urls import path
+from django.urls import reverse
+from django.utils.html import format_html, format_html_join
 
 from .models import (
 	Completion,
@@ -206,6 +208,22 @@ class TicketAdmin(admin.ModelAdmin):
 class TagAdmin(admin.ModelAdmin):
 	list_display = ["name", "created_at"]
 	search_fields = ["name"]
+	readonly_fields = ["linked_ticket_templates"]
+	fields = ["name", "linked_ticket_templates"]
+
+	@admin.display(description="Linked ticket templates")
+	def linked_ticket_templates(self, obj: Tag):
+		if not obj or not obj.pk:
+			return "—"
+		templates = list(obj.templates.all().order_by("title").only("id", "title"))
+		if not templates:
+			return "None"
+		items = format_html_join(
+			"",
+			'<li><a href="{}">{}</a></li>',
+			((reverse("admin:tickets_tickettemplate_change", args=[t.id]), t.title) for t in templates),
+		)
+		return format_html("<ul class='m-0'>{}</ul>", items)
 
 
 @admin.register(Completion)
