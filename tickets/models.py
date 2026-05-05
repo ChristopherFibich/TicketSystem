@@ -382,6 +382,23 @@ class DashboardToggleStatus(models.Model):
 		return f"{self.day} {self.toggle}: {'on' if self.on else 'off'}"
 
 
+class WeightEntry(models.Model):
+	measured_on = models.DateField(db_index=True)
+	weight_kg = models.DecimalField(max_digits=5, decimal_places=1)
+	created_at = models.DateTimeField(auto_now_add=True)
+	created_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name="weight_entries",
+	)
+
+	class Meta:
+		ordering = ["measured_on", "created_at"]
+
+	def __str__(self) -> str:
+		return f"{self.created_by} {self.measured_on}: {self.weight_kg} kg"
+
+
 class ShoppingItem(models.Model):
 	text = models.CharField(max_length=200)
 	checked = models.BooleanField(default=False)

@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import date, timedelta
+import json
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -27,6 +28,7 @@ from .models import (
 	Ticket,
 	TicketTemplate,
 	TicketStatus,
+	WeightEntry,
 )
 
 AuthUser = get_user_model()
@@ -405,6 +407,48 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 @login_required
 def pets(request: HttpRequest) -> HttpResponse:
 	return redirect("dashboard")
+
+
+@login_required
+def graphs(request: HttpRequest) -> HttpResponse:
+	# Chris-only page.
+	if (request.user.username or "") != "Chris":
+		return redirect("dashboard")
+
+	if request.method == "POST":
+		measured_on_raw = (request.POST.get("measured_on") or "").strip()
+		weight_raw = (request.POST.get("weight_kg") or "").strip().replace(",", ".")
+		if measured_on_raw and weight_raw:
+			try:
+				measured_on = date.fromisoformat(measured_on_raw)
+				float(weight_raw)
+			except ValueError:
+				pass
+			else:
+				WeightEntry.objects.create(
+					created_by=request.user,
+					measured_on=measured_on,
+					weight_kg=weight_raw,
+				)
+		return redirect("graphs")
+
+	entries = list(
+		WeightEntry.objects.filter(created_by=request.user)
+		.only("measured_on", "weight_kg")
+		.order_by("measured_on", "created_at")
+	)
+	labels = [e.measured_on.isoformat() for e in entries]
+	weights = [float(e.weight_kg) for e in entries]
+
+	return render(
+		request,
+		"tickets/graphs.html",
+		{
+			"default_measured_on": timezone.localdate().isoformat(),
+			"labels_json": json.dumps(labels),
+			"weights_json": json.dumps(weights),
+		},
+	)
 
 
 @login_required

@@ -17,6 +17,7 @@ from .models import (
 	Ticket,
 	TicketTemplate,
 	TicketTemplateEligibility,
+	WeightEntry,
 )
 from .scheduling import next_scheduled_for
 
@@ -287,3 +288,11 @@ class DashboardToggleStatusAdmin(admin.ModelAdmin):
 	list_filter = ["day", "toggle__group"]
 	search_fields = ["toggle__label", "toggle__group__title"]
 	ordering = ["-day", "toggle_id"]
+
+
+@admin.register(WeightEntry)
+class WeightEntryAdmin(admin.ModelAdmin):
+	list_display = ["measured_on", "weight_kg", "created_by", "created_at"]
+	list_filter = ["created_by", "measured_on"]
+	search_fields = ["created_by__username"]
+	ordering = ["-measured_on", "-created_at"]

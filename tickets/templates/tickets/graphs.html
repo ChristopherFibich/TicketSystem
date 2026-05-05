@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Graphs{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Graphs</h1>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <canvas id="weightChart" height="120"></canvas>
+    </div>
+  </div>
+
+  <form method="post" class="card card-body">
+    {% csrf_token %}
+
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="id_measured_on">Date</label>
+        <input class="form-control" type="date" id="id_measured_on" name="measured_on" value="{{ default_measured_on }}" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="id_weight_kg">Weight (kg)</label>
+        <input class="form-control" type="number" step="0.1" inputmode="decimal" id="id_weight_kg" name="weight_kg" required>
+      </div>
+      <div class="col-12 col-md-4 d-grid">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </div>
+    </div>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script>
+    (function () {
+      const labels = {{ labels_json|safe }};
+      const data = {{ weights_json|safe }};
+
+      const ctx = document.getElementById('weightChart');
+      if (!ctx) return;
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Weight (kg)',
+            data,
+            borderWidth: 2,
+            tension: 0.2,
+            pointRadius: 3,
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+          },
+          scales: {
+            x: { title: { display: true, text: 'Time' } },
+            y: { title: { display: true, text: 'kg' } },
+          }
+        }
+      });
+    })();
+  </script>
+{% endblock %}
