@@ -11,7 +11,7 @@
     <div class="card-body">
       <div class="form-check form-switch mb-3">
         <input class="form-check-input" type="checkbox" role="switch" id="id_show_average" checked>
-        <label class="form-check-label" for="id_show_average">Show average line (trend)</label>
+        <label class="form-check-label" for="id_show_average">Show trend (rate of change)</label>
       </div>
       <canvas id="weightChart" height="120"></canvas>
     </div>
@@ -44,11 +44,19 @@
       const ctx = document.getElementById('weightChart');
       if (!ctx) return;
 
-      const average = (data.length > 0)
-        ? (data.reduce((acc, v) => acc + v, 0) / data.length)
-        : null;
-
-      const avgData = (average === null) ? [] : labels.map(() => average);
+      const derivativeData = labels.map(() => null);
+      if (labels.length >= 2 && data.length === labels.length) {
+        for (let i = 1; i < labels.length; i++) {
+          const t0 = Date.parse(labels[i - 1]);
+          const t1 = Date.parse(labels[i]);
+          const dayDelta = (t1 - t0) / (1000 * 60 * 60 * 24);
+          if (!Number.isFinite(dayDelta) || dayDelta <= 0) {
+            derivativeData[i] = null;
+            continue;
+          }
+          derivativeData[i] = (data[i] - data[i - 1]) / dayDelta;
+        }
+      }
 
       const chart = new Chart(ctx, {
         type: 'line',
@@ -61,12 +69,13 @@
             tension: 0.2,
             pointRadius: 3,
           }, {
-            label: 'Average (kg)',
-            data: avgData,
+            label: 'Trend (kg/day)',
+            data: derivativeData,
             borderWidth: 2,
             borderDash: [6, 6],
             pointRadius: 0,
             tension: 0,
+            yAxisID: 'yRate',
           }]
         },
         options: {
@@ -77,6 +86,11 @@
           scales: {
             x: { title: { display: true, text: 'Time' } },
             y: { title: { display: true, text: 'kg' } },
+            yRate: {
+              position: 'right',
+              title: { display: true, text: 'kg/day' },
+              grid: { drawOnChartArea: false },
+            },
           }
         }
       });
@@ -84,13 +98,13 @@
       const toggle = document.getElementById('id_show_average');
       if (!toggle) return;
 
-      if (average === null) {
+      if (labels.length < 2) {
         toggle.checked = false;
         toggle.disabled = true;
       }
 
       const setAverageVisible = (visible) => {
-        // Dataset 1 is the average line.
+        // Dataset 1 is the trend (derivative) line.
         chart.setDatasetVisibility(1, !!visible);
         chart.update();
       };
