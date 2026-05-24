@@ -46,6 +46,13 @@
       if (!ctx) return;
 
       const parseISODateUTC = (isoDate) => new Date(isoDate + 'T00:00:00Z');
+      const formatMonthDay = (isoDate) => {
+        const d = parseISODateUTC(isoDate);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const m = months[d.getUTCMonth()] || '';
+        const day = d.getUTCDate();
+        return `${m}-${day}`;
+      };
       const addDaysISO = (isoDate, days) => {
         const d = parseISODateUTC(isoDate);
         const ms = d.getTime() + days * 24 * 60 * 60 * 1000;
@@ -118,9 +125,26 @@
           responsive: true,
           plugins: {
             legend: { display: true },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  if (!items || items.length === 0) return '';
+                  const label = items[0].label;
+                  return formatMonthDay(label);
+                }
+              }
+            },
           },
           scales: {
-            x: { title: { display: true, text: 'Time' } },
+            x: {
+              title: { display: true, text: 'Time' },
+              ticks: {
+                callback: (value, index) => {
+                  const raw = extendedLabels[index];
+                  return raw ? formatMonthDay(raw) : value;
+                }
+              }
+            },
             y: { title: { display: true, text: 'kg' } },
           }
         }
