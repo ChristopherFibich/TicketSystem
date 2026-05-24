@@ -9,6 +9,10 @@
 
   <div class="card mb-3">
     <div class="card-body">
+      <div class="form-check form-switch mb-3">
+        <input class="form-check-input" type="checkbox" role="switch" id="id_show_average" checked>
+        <label class="form-check-label" for="id_show_average">Show average line (trend)</label>
+      </div>
       <canvas id="weightChart" height="120"></canvas>
     </div>
   </div>
@@ -40,7 +44,13 @@
       const ctx = document.getElementById('weightChart');
       if (!ctx) return;
 
-      new Chart(ctx, {
+      const average = (data.length > 0)
+        ? (data.reduce((acc, v) => acc + v, 0) / data.length)
+        : null;
+
+      const avgData = (average === null) ? [] : labels.map(() => average);
+
+      const chart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
@@ -50,6 +60,13 @@
             borderWidth: 2,
             tension: 0.2,
             pointRadius: 3,
+          }, {
+            label: 'Average (kg)',
+            data: avgData,
+            borderWidth: 2,
+            borderDash: [6, 6],
+            pointRadius: 0,
+            tension: 0,
           }]
         },
         options: {
@@ -63,6 +80,23 @@
           }
         }
       });
+
+      const toggle = document.getElementById('id_show_average');
+      if (!toggle) return;
+
+      if (average === null) {
+        toggle.checked = false;
+        toggle.disabled = true;
+      }
+
+      const setAverageVisible = (visible) => {
+        // Dataset 1 is the average line.
+        chart.setDatasetVisibility(1, !!visible);
+        chart.update();
+      };
+
+      setAverageVisible(toggle.checked);
+      toggle.addEventListener('change', () => setAverageVisible(toggle.checked));
     })();
   </script>
 {% endblock %}
