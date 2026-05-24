@@ -11,9 +11,10 @@
     <div class="card-body">
       <div class="form-check form-switch mb-3">
         <input class="form-check-input" type="checkbox" role="switch" id="id_show_average" checked>
-        <label class="form-check-label" for="id_show_average">Show trend (rate of change)</label>
+        <label class="form-check-label" for="id_show_average">Show trend line + forecast</label>
       </div>
       <canvas id="weightChart" height="120"></canvas>
+      <div id="trendSummary" class="small text-muted mt-2" style="display: none;"></div>
     </div>
   </div>
 
@@ -44,38 +45,73 @@
       const ctx = document.getElementById('weightChart');
       if (!ctx) return;
 
-      const derivativeData = labels.map(() => null);
+      const parseISODateUTC = (isoDate) => new Date(isoDate + 'T00:00:00Z');
+      const addDaysISO = (isoDate, days) => {
+        const d = parseISODateUTC(isoDate);
+        const ms = d.getTime() + days * 24 * 60 * 60 * 1000;
+        const out = new Date(ms);
+        return out.toISOString().slice(0, 10);
+      };
+
+      const forecastWeeks = 4;
+      const forecastStepDays = 7;
+      const forecastDays = forecastWeeks * forecastStepDays;
+
+      const extendedLabels = labels.slice();
+      if (labels.length >= 1) {
+        const last = labels[labels.length - 1];
+        for (let d = forecastStepDays; d <= forecastDays; d += forecastStepDays) {
+          extendedLabels.push(addDaysISO(last, d));
+        }
+      }
+
+      const weightExtended = data.concat(Array(Math.max(0, extendedLabels.length - data.length)).fill(null));
+
+      // Linear regression trend line: weight = a + b * tDays
+      // where tDays is days since first measurement.
+      const trendData = extendedLabels.map(() => null);
+      let slope = null;
+      let intercept = null;
       if (labels.length >= 2 && data.length === labels.length) {
-        for (let i = 1; i < labels.length; i++) {
-          const t0 = Date.parse(labels[i - 1]);
-          const t1 = Date.parse(labels[i]);
-          const dayDelta = (t1 - t0) / (1000 * 60 * 60 * 24);
-          if (!Number.isFinite(dayDelta) || dayDelta <= 0) {
-            derivativeData[i] = null;
-            continue;
+        const t0 = parseISODateUTC(labels[0]).getTime();
+        const xs = labels.map(l => (parseISODateUTC(l).getTime() - t0) / (1000 * 60 * 60 * 24));
+        const ys = data;
+
+        const n = xs.length;
+        const sumX = xs.reduce((a, v) => a + v, 0);
+        const sumY = ys.reduce((a, v) => a + v, 0);
+        const sumXX = xs.reduce((a, v) => a + v * v, 0);
+        const sumXY = xs.reduce((a, v, i) => a + v * ys[i], 0);
+
+        const denom = (n * sumXX - sumX * sumX);
+        if (denom !== 0) {
+          slope = (n * sumXY - sumX * sumY) / denom;
+          intercept = (sumY - slope * sumX) / n;
+
+          for (let i = 0; i < extendedLabels.length; i++) {
+            const x = (parseISODateUTC(extendedLabels[i]).getTime() - t0) / (1000 * 60 * 60 * 24);
+            trendData[i] = intercept + slope * x;
           }
-          derivativeData[i] = (data[i] - data[i - 1]) / dayDelta;
         }
       }
 
       const chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels,
+          labels: extendedLabels,
           datasets: [{
             label: 'Weight (kg)',
-            data,
+            data: weightExtended,
             borderWidth: 2,
             tension: 0.2,
             pointRadius: 3,
           }, {
-            label: 'Trend (kg/day)',
-            data: derivativeData,
+            label: 'Trend (kg)',
+            data: trendData,
             borderWidth: 2,
             borderDash: [6, 6],
             pointRadius: 0,
             tension: 0,
-            yAxisID: 'yRate',
           }]
         },
         options: {
@@ -86,11 +122,6 @@
           scales: {
             x: { title: { display: true, text: 'Time' } },
             y: { title: { display: true, text: 'kg' } },
-            yRate: {
-              position: 'right',
-              title: { display: true, text: 'kg/day' },
-              grid: { drawOnChartArea: false },
-            },
           }
         }
       });
@@ -98,15 +129,44 @@
       const toggle = document.getElementById('id_show_average');
       if (!toggle) return;
 
-      if (labels.length < 2) {
+      const summaryEl = document.getElementById('trendSummary');
+
+      if (labels.length < 2 || slope === null || intercept === null) {
         toggle.checked = false;
         toggle.disabled = true;
+
+        if (summaryEl) {
+          summaryEl.style.display = 'block';
+          summaryEl.textContent = 'Add at least 2 entries to calculate a trend line.';
+        }
       }
 
       const setAverageVisible = (visible) => {
-        // Dataset 1 is the trend (derivative) line.
+        // Dataset 1 is the trend line.
         chart.setDatasetVisibility(1, !!visible);
         chart.update();
+
+        if (!summaryEl) return;
+        if (!visible) {
+          summaryEl.style.display = 'none';
+          return;
+        }
+
+        if (slope === null || intercept === null || labels.length < 2) {
+          summaryEl.style.display = 'block';
+          summaryEl.textContent = 'Add at least 2 entries to calculate a trend line.';
+          return;
+        }
+
+        const slopePerDay = slope;
+        const slopePerWeek = slopePerDay * 7;
+
+        const t0 = parseISODateUTC(labels[0]).getTime();
+        const lastX = (parseISODateUTC(labels[labels.length - 1]).getTime() - t0) / (1000 * 60 * 60 * 24);
+        const predIn4w = intercept + slopePerDay * (lastX + forecastDays);
+
+        summaryEl.style.display = 'block';
+        summaryEl.textContent = `Trend ≈ ${slopePerDay.toFixed(3)} kg/day (≈ ${slopePerWeek.toFixed(2)} kg/week). If it continues: ~${predIn4w.toFixed(1)} kg in ${forecastWeeks} weeks.`;
       };
 
       setAverageVisible(toggle.checked);
