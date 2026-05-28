@@ -59,11 +59,26 @@ def home(request: HttpRequest) -> HttpResponse:
 @login_required
 def my_tickets(request: HttpRequest) -> HttpResponse:
 	now = timezone.now()
+	q = (request.GET.get("q") or "").strip()
+	show_done_param = (request.GET.get("show_done") or "").strip()
+	# My tickets historically showed DONE; default to showing it.
+	show_done = True if show_done_param == "" else show_done_param in {"1", "true", "yes", "on"}
 	tickets = (
 		Ticket.objects.select_related("assignee", "template")
+		.prefetch_related("tags")
 		.filter(assignee=request.user)
 		.order_by("status", "-created_at")
 	)
+	if not show_done:
+		tickets = tickets.exclude(status=TicketStatus.DONE)
+	if q:
+		tickets = tickets.filter(
+			Q(title__icontains=q)
+			| Q(description__icontains=q)
+			| Q(assignee__username__icontains=q)
+			| Q(template__title__icontains=q)
+			| Q(tags__name__icontains=q)
+		).distinct()
 
 	grouped: dict[str, list[Ticket]] = {
 		TicketStatus.NEW: [],
@@ -76,11 +91,20 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 		grouped[ticket.status].append(ticket)
 
 	sections = []
-	for status in [TicketStatus.NEW, TicketStatus.DOING, TicketStatus.DONE]:
+	statuses = [TicketStatus.NEW, TicketStatus.DOING, TicketStatus.DONE] if show_done else [TicketStatus.NEW, TicketStatus.DOING]
+	for status in statuses:
 		items = grouped.get(status, [])
 		sections.append({"status": status, "label": status.label, "tickets": items, "count": len(items)})
 
-	return render(request, "tickets/my_tickets.html", {"sections": sections})
+	return render(
+		request,
+		"tickets/my_tickets.html",
+		{
+			"sections": sections,
+			"q": q,
+			"show_done": show_done,
+		},
+	)
 
 
 @login_required
