@@ -295,11 +295,11 @@
             x: {
               title: { display: true, text: 'Time' },
               ticks: {
-                callback: (value, index) => {
-                  const raw = chart.data.labels[index];
+                callback: function (value) {
+                  const raw = this.getLabelForValue(value);
                   if (!raw) return value;
                   return (currentRange === 'all') ? formatMonthYear(raw) : formatMonthDay(raw);
-                }
+                },
               }
             },
             y: {
