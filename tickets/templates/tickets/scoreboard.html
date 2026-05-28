@@ -243,13 +243,6 @@
         const day = d.getUTCDate();
         return `${m}-${day}`;
       };
-      const formatMonthYear = (isoDate) => {
-        const d = parseISODateUTC(isoDate);
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const m = months[d.getUTCMonth()] || '';
-        const y = d.getUTCFullYear();
-        return `${m} ${y}`;
-      };
 
       const buildDatasets = (series) => {
         return (series || []).map((s, idx) => {
@@ -286,7 +279,7 @@
                 title: (items) => {
                   if (!items || items.length === 0) return '';
                   const label = items[0].label;
-                  return (currentRange === 'all') ? formatMonthYear(label) : formatMonthDay(label);
+                  return formatMonthDay(label);
                 }
               }
             },
@@ -298,7 +291,7 @@
                 callback: function (value) {
                   const raw = this.getLabelForValue(value);
                   if (!raw) return value;
-                  return (currentRange === 'all') ? formatMonthYear(raw) : formatMonthDay(raw);
+                  return formatMonthDay(raw);
                 },
               }
             },

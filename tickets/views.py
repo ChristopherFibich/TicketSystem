@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
-from django.db.models.functions import TruncDate, TruncMonth
+from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -729,39 +729,48 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			)
 		return {"labels": labels, "series": series}
 
-	def _monthly_graph_all_time():
-		monthly_counts: dict[tuple[int, str], int] = {}
-		months: list[str] = []
-		seen: set[str] = set()
+	def _weekly_graph_all_time():
+		weekly_counts: dict[tuple[int, str], int] = {}
+		min_week: date | None = None
+		max_week: date | None = None
+
 		for row in (
-			Completion.objects.annotate(month=TruncMonth("completed_at"))
-			.values("month", "completed_by")
+			Completion.objects.annotate(week=TruncWeek("completed_at"))
+			.values("week", "completed_by")
 			.annotate(c=Count("id"))
-			.order_by("month")
+			.order_by("week")
 		):
-			month = row["month"]
-			if not month:
+			week = row["week"]
+			if not week:
 				continue
-			month_label = month.date().isoformat() if hasattr(month, "date") else month.isoformat()
-			if month_label not in seen:
-				seen.add(month_label)
-				months.append(month_label)
-			monthly_counts[(int(row["completed_by"]), month_label)] = int(row["c"] or 0)
+			week_date = week.date() if hasattr(week, "date") else week
+			if min_week is None or week_date < min_week:
+				min_week = week_date
+			if max_week is None or week_date > max_week:
+				max_week = week_date
+			weekly_counts[(int(row["completed_by"]), week_date.isoformat())] = int(row["c"] or 0)
+
+		labels: list[str] = []
+		if min_week is not None and max_week is not None:
+			cur = min_week
+			while cur <= max_week:
+				labels.append(cur.isoformat())
+				cur += timedelta(days=7)
 
 		series = []
 		for u in users_list:
 			series.append(
 				{
 					"label": u.username,
-					"data": [monthly_counts.get((u.id, m), 0) for m in months],
+					"data": [weekly_counts.get((u.id, w), 0) for w in labels],
 				}
 			)
-		return {"labels": months, "series": series}
+		return {"labels": labels, "series": series}
 
 	scoreboard_graph = {
 		"week": _daily_graph(7),
 		"month": _daily_graph(30),
-		"all": _monthly_graph_all_time(),
+		"all": _weekly_graph_all_time(),
 	}
 
 	return render(
