@@ -3,6 +3,19 @@
 {% block title %}Graphs{% endblock %}
 
 {% block content %}
+  <style>
+    .chart-container {
+      position: relative;
+      height: 180px;
+    }
+
+    @media (max-width: 576px) {
+      .chart-container {
+        height: 320px;
+      }
+    }
+  </style>
+
   <div class="d-flex align-items-center justify-content-between mb-3">
     <h1 class="h4 m-0">Graphs</h1>
   </div>
@@ -13,7 +26,9 @@
         <input class="form-check-input" type="checkbox" role="switch" id="id_show_average" checked>
         <label class="form-check-label" for="id_show_average">Show trend line + forecast</label>
       </div>
-      <canvas id="weightChart" height="120"></canvas>
+      <div class="chart-container">
+        <canvas id="weightChart"></canvas>
+      </div>
       <div id="trendSummary" class="small text-muted mt-2" style="display: none;"></div>
     </div>
   </div>
@@ -123,6 +138,7 @@
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
           plugins: {
             legend: { display: true },
             tooltip: {
