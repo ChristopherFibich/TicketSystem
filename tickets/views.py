@@ -456,21 +456,43 @@ def graphs(request: HttpRequest) -> HttpResponse:
 				)
 		return redirect("graphs")
 
+	today = timezone.localdate()
+	start_7d = today - timedelta(days=6)
+	start_30d = today - timedelta(days=29)
+
 	entries = list(
 		WeightEntry.objects.filter(created_by=request.user)
 		.only("measured_on", "weight_kg")
 		.order_by("measured_on", "created_at")
 	)
-	labels = [e.measured_on.isoformat() for e in entries]
-	weights = [float(e.weight_kg) for e in entries]
+
+	all_labels = [e.measured_on.isoformat() for e in entries]
+	all_weights = [float(e.weight_kg) for e in entries]
+
+	week_labels: list[str] = []
+	week_weights: list[float] = []
+	month_labels: list[str] = []
+	month_weights: list[float] = []
+	for e in entries:
+		if e.measured_on >= start_7d:
+			week_labels.append(e.measured_on.isoformat())
+			week_weights.append(float(e.weight_kg))
+		if e.measured_on >= start_30d:
+			month_labels.append(e.measured_on.isoformat())
+			month_weights.append(float(e.weight_kg))
+
+	weight_graph = {
+		"week": {"labels": week_labels, "data": week_weights},
+		"month": {"labels": month_labels, "data": month_weights},
+		"all": {"labels": all_labels, "data": all_weights},
+	}
 
 	return render(
 		request,
 		"tickets/graphs.html",
 		{
 			"default_measured_on": timezone.localdate().isoformat(),
-			"labels_json": json.dumps(labels),
-			"weights_json": json.dumps(weights),
+			"weight_graph_json": json.dumps(weight_graph),
 		},
 	)
 
