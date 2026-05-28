@@ -5,6 +5,34 @@
 {% block content %}
   <h1 class="h4 mb-3">Scoreboard</h1>
 
+  <div class="card card-body mb-4">
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="fw-semibold">Tickets done over time</div>
+      <button
+        class="btn btn-outline-secondary btn-sm"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#scoreboardGraph"
+        aria-expanded="false"
+        aria-controls="scoreboardGraph"
+      >
+        Toggle graph
+      </button>
+    </div>
+
+    <div class="collapse mt-3" id="scoreboardGraph">
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-2 flex-wrap">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Graph range">
+          <button type="button" class="btn btn-outline-secondary active" data-range="week">Last week</button>
+          <button type="button" class="btn btn-outline-secondary" data-range="month">Last month</button>
+          <button type="button" class="btn btn-outline-secondary" data-range="all">All time</button>
+        </div>
+        <small class="text-body-secondary">Y: tickets done · X: time</small>
+      </div>
+      <canvas id="scoreboardChart" height="140"></canvas>
+    </div>
+  </div>
+
   <div class="row g-3 mb-4">
     <div class="col-12 col-lg-4">
       <div class="card card-body">
@@ -191,4 +219,120 @@
       <div class="text-body-secondary mt-2"><small>Showing up to 24 months.</small></div>
     </div>
   {% endif %}
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script>
+    (function () {
+      const graphData = {{ scoreboard_graph_json|default:'{}'|safe }};
+      const collapseEl = document.getElementById('scoreboardGraph');
+      const canvas = document.getElementById('scoreboardChart');
+      if (!collapseEl || !canvas) return;
+
+      const rootStyle = getComputedStyle(document.documentElement);
+      const colorVars = ['--bs-primary', '--bs-success', '--bs-danger', '--bs-warning', '--bs-info', '--bs-secondary'];
+      const pickColor = (idx) => {
+        const v = rootStyle.getPropertyValue(colorVars[idx % colorVars.length]).trim();
+        return v || undefined;
+      };
+
+      const parseISODateUTC = (isoDate) => new Date(isoDate + 'T00:00:00Z');
+      const formatMonthDay = (isoDate) => {
+        const d = parseISODateUTC(isoDate);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const m = months[d.getUTCMonth()] || '';
+        const day = d.getUTCDate();
+        return `${m}-${day}`;
+      };
+      const formatMonthYear = (isoDate) => {
+        const d = parseISODateUTC(isoDate);
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const m = months[d.getUTCMonth()] || '';
+        const y = d.getUTCFullYear();
+        return `${m} ${y}`;
+      };
+
+      const buildDatasets = (series) => {
+        return (series || []).map((s, idx) => {
+          const color = pickColor(idx);
+          return {
+            label: s.label,
+            data: s.data,
+            borderWidth: 2,
+            tension: 0.2,
+            pointRadius: 0,
+            borderColor: color,
+            backgroundColor: color,
+          };
+        });
+      };
+
+      const getRangePayload = (range) => graphData[range] || { labels: [], series: [] };
+
+      let currentRange = 'week';
+      const initial = getRangePayload(currentRange);
+
+      const chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: initial.labels || [],
+          datasets: buildDatasets(initial.series),
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: true },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  if (!items || items.length === 0) return '';
+                  const label = items[0].label;
+                  return (currentRange === 'all') ? formatMonthYear(label) : formatMonthDay(label);
+                }
+              }
+            },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Time' },
+              ticks: {
+                callback: (value, index) => {
+                  const raw = chart.data.labels[index];
+                  if (!raw) return value;
+                  return (currentRange === 'all') ? formatMonthYear(raw) : formatMonthDay(raw);
+                }
+              }
+            },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: 'Tickets done' },
+              ticks: { precision: 0 },
+            },
+          },
+        }
+      });
+
+      const setRange = (range) => {
+        currentRange = range;
+        const payload = getRangePayload(range);
+        chart.data.labels = payload.labels || [];
+        chart.data.datasets = buildDatasets(payload.series);
+        chart.update();
+
+        document.querySelectorAll('[data-range]').forEach(btn => {
+          btn.classList.toggle('active', btn.getAttribute('data-range') === range);
+        });
+      };
+
+      document.querySelectorAll('[data-range]').forEach(btn => {
+        btn.addEventListener('click', () => setRange(btn.getAttribute('data-range')));
+      });
+
+      collapseEl.addEventListener('shown.bs.collapse', () => {
+        chart.resize();
+      });
+
+      // Ensure default state
+      setRange(currentRange);
+    })();
+  </script>
 {% endblock %}

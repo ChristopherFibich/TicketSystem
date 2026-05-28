@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncDate, TruncMonth
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -506,6 +506,7 @@ def einkaufsliste(request: HttpRequest) -> HttpResponse:
 @login_required
 def scoreboard(request: HttpRequest) -> HttpResponse:
 	users = User.objects.all().order_by("username")
+	users_list = list(users)
 
 	totals = {
 		row["completed_by"]: row
@@ -545,7 +546,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	}
 
 	rows = []
-	for user in users:
+	for user in users_list:
 		total = totals.get(user.id, {})
 		last30 = recent.get(user.id, {})
 		p_today = points_today.get(user.id, 0)
@@ -663,7 +664,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 				months_won_by_user_id[int(s["user_id"])] = months_won_by_user_id.get(int(s["user_id"]), 0) + 1
 		month_history.append({"month": month, "scores": scores})
 
-	months_won = [{"username": u.username, "count": months_won_by_user_id.get(u.id, 0)} for u in users]
+	months_won = [{"username": u.username, "count": months_won_by_user_id.get(u.id, 0)} for u in users_list]
 
 	# Per-tag breakdown (based on completed tickets).
 	tags = list(Tag.objects.all().order_by("name"))
@@ -683,11 +684,11 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	tag_stats = []
 	for tag in tags:
 		counts_by_user = tag_counts.get(tag.id, {})
-		total = sum(counts_by_user.get(u.id, 0) for u in users)
-		max_count = max([counts_by_user.get(u.id, 0) for u in users] + [0])
+		total = sum(counts_by_user.get(u.id, 0) for u in users_list)
+		max_count = max([counts_by_user.get(u.id, 0) for u in users_list] + [0])
 
 		rows_for_tag = []
-		for u in users:
+		for u in users_list:
 			count = counts_by_user.get(u.id, 0)
 			pct = 0 if total <= 0 else int(round((count / total) * 100))
 			rows_for_tag.append(
@@ -701,6 +702,68 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 
 		tag_stats.append({"tag": tag.name, "rows": rows_for_tag, "total": total})
 
+	def _daily_graph(days: int):
+		end_day = timezone.localdate()
+		start_day = end_day - timedelta(days=max(1, days) - 1)
+		labels = [(start_day + timedelta(days=i)).isoformat() for i in range((end_day - start_day).days + 1)]
+		counts: dict[tuple[int, str], int] = {}
+		for row in (
+			Completion.objects.filter(completed_at__date__gte=start_day, completed_at__date__lte=end_day)
+			.annotate(day=TruncDate("completed_at"))
+			.values("day", "completed_by")
+			.annotate(c=Count("id"))
+		):
+			day = row["day"]
+			if not day:
+				continue
+			day_label = day.isoformat()
+			counts[(int(row["completed_by"]), day_label)] = int(row["c"] or 0)
+
+		series = []
+		for u in users_list:
+			series.append(
+				{
+					"label": u.username,
+					"data": [counts.get((u.id, d), 0) for d in labels],
+				}
+			)
+		return {"labels": labels, "series": series}
+
+	def _monthly_graph_all_time():
+		monthly_counts: dict[tuple[int, str], int] = {}
+		months: list[str] = []
+		seen: set[str] = set()
+		for row in (
+			Completion.objects.annotate(month=TruncMonth("completed_at"))
+			.values("month", "completed_by")
+			.annotate(c=Count("id"))
+			.order_by("month")
+		):
+			month = row["month"]
+			if not month:
+				continue
+			month_label = month.date().isoformat() if hasattr(month, "date") else month.isoformat()
+			if month_label not in seen:
+				seen.add(month_label)
+				months.append(month_label)
+			monthly_counts[(int(row["completed_by"]), month_label)] = int(row["c"] or 0)
+
+		series = []
+		for u in users_list:
+			series.append(
+				{
+					"label": u.username,
+					"data": [monthly_counts.get((u.id, m), 0) for m in months],
+				}
+			)
+		return {"labels": months, "series": series}
+
+	scoreboard_graph = {
+		"week": _daily_graph(7),
+		"month": _daily_graph(30),
+		"all": _monthly_graph_all_time(),
+	}
+
 	return render(
 		request,
 		"tickets/scoreboard.html",
@@ -710,5 +773,6 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			"month_history": month_history,
 			"months_won": months_won,
 			"tag_stats": tag_stats,
+			"scoreboard_graph_json": json.dumps(scoreboard_graph),
 		},
 	)
