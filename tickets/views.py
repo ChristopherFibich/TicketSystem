@@ -191,6 +191,7 @@ def haushalt_tickets(request: HttpRequest) -> HttpResponse:
 			| Q(tags__name__iexact="Weekly")
 			| Q(tags__name__iexact="Monthly")
 		)
+		.exclude(status=TicketStatus.DONE)
 		.distinct()
 		.order_by("-created_at")
 	)
