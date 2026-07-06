@@ -25,13 +25,7 @@ or set `DJANGO_ALLOWED_HOSTS` to include your server IP, e.g.
 `DJANGO_ALLOWED_HOSTS=192.168.2.104,127.0.0.1,localhost`.
 
 Admin:
-- http://<server-ip>:8000/admin/
-
-## Initial setup (admin)
-1. Create a Django user for each household member in `/admin/`.
-2. Create recurring templates in `/admin/` → **Ticket templates**.
-3. For pool-based templates, add eligible users + weights via the inline table.
-
+- http://<server-ip>:8000/admin
 
 
 ## Recurring spawn (cron)
