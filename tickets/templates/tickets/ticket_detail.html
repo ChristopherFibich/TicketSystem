@@ -121,9 +121,10 @@
             {% csrf_token %}
             <input type="hidden" name="checklist_item_id" value="{{ item.id }}">
             <input type="hidden" name="save_checklist_item" value="1">
-            <input class="form-check-input m-0" type="checkbox" name="is_done" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
-            <div class="flex-grow-1 {% if item.is_done %}text-decoration-line-through text-body-secondary{% endif %}">{{ item.text }}</div>
-            <button class="btn btn-outline-secondary btn-sm" type="submit">Save</button>
+            <input class="form-check-input m-0" id="checklist-item-{{ item.id }}" type="checkbox" name="is_done" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
+            <label class="flex-grow-1 m-0 {% if item.is_done %}text-decoration-line-through text-body-secondary{% endif %}" for="checklist-item-{{ item.id }}">
+              {{ item.text }}
+            </label>
           </form>
         {% endfor %}
       </div>
