@@ -47,6 +47,61 @@ class RecurringTicketSchedulingTests(TestCase):
 		scheduled_dates = list(Ticket.objects.filter(template=template).values_list("scheduled_for_date", flat=True).order_by("scheduled_for_date"))
 		self.assertEqual(scheduled_dates, [date(2026, 7, 4), date(2026, 7, 11)])
 
+	def test_household_fairness_ignores_todo_completions(self):
+		user_one = User.objects.create_user(username="alice", password="pw")
+		user_two = User.objects.create_user(username="bob", password="pw")
+		pool_template = TicketTemplate.objects.create(
+			title="Household cleanup",
+			description="",
+			active=True,
+			frequency=RecurrenceFrequency.DAILY,
+			interval=1,
+			start_date=date(2026, 7, 1),
+			assignment_mode=AssignmentMode.POOL,
+			points=1,
+		)
+		daily_tag = Tag.objects.create(name="Daily")
+		pool_template.tags.add(daily_tag)
+		pool_template.eligibilities.create(user=user_one, weight=1)
+		pool_template.eligibilities.create(user=user_two, weight=1)
+
+		todo_template = TicketTemplate.objects.create(
+			title="Todo task",
+			description="",
+			active=True,
+			frequency=RecurrenceFrequency.DAILY,
+			interval=1,
+			start_date=date(2026, 7, 1),
+			assignment_mode=AssignmentMode.FIXED,
+			fixed_assignee=user_one,
+			points=2,
+		)
+		todo_ticket = Ticket.objects.create(
+			template=todo_template,
+			title="Todo task",
+			description="",
+			status=TicketStatus.NEW,
+			assignee=user_one,
+			counts_for_score=True,
+		)
+		todo_ticket.mark_done(completed_by=user_one)
+
+		household_ticket = Ticket.objects.create(
+			template=pool_template,
+			title="Household done",
+			description="",
+			status=TicketStatus.NEW,
+			assignee=user_two,
+			counts_for_score=True,
+		)
+		household_ticket.tags.add(daily_tag)
+		household_ticket.mark_done(completed_by=user_two)
+
+		call_command("spawn_recurring_tickets", date="2026-07-07")
+
+		spawned = Ticket.objects.get(template=pool_template, scheduled_for_date=date(2026, 7, 7))
+		self.assertEqual(spawned.assignee, user_one)
+
 
 class TicketTemplateAdminDefaultsTests(TestCase):
 	def test_pool_add_form_defaults_to_all_active_users(self):

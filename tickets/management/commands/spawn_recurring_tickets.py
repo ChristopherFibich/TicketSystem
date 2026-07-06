@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from tickets.models import (
@@ -26,6 +26,14 @@ User = get_user_model()
 #
 # Because v1 points are fixed per template, balancing total points and balancing
 # completion count are effectively equivalent.
+
+
+def _household_completion_queryset():
+    return Completion.objects.filter(
+        Q(ticket__tags__name__iexact="Daily")
+        | Q(ticket__tags__name__iexact="Weekly")
+        | Q(ticket__tags__name__iexact="Monthly")
+    )
 
 
 @dataclass(frozen=True)
@@ -54,7 +62,9 @@ def choose_assignee_with_projected_totals(
         user_ids = [c.user.id for c in candidates]
         totals = {
             row["completed_by"]: int(row["points"] or 0)
-            for row in Completion.objects.filter(completed_by_id__in=user_ids)
+            for row in _household_completion_queryset()
+            .filter(completed_by_id__in=user_ids)
+            .distinct()
             .values("completed_by")
             .annotate(points=Sum("points_awarded"), count=Count("id"))
         }
@@ -103,7 +113,10 @@ class Command(BaseCommand):
         # Build a per-run projected total so each new assignment re-balances.
         base_points = {
             row["completed_by"]: int(row["points"] or 0)
-            for row in Completion.objects.values("completed_by").annotate(points=Sum("points_awarded"))
+            for row in _household_completion_queryset()
+            .distinct()
+            .values("completed_by")
+            .annotate(points=Sum("points_awarded"))
         }
         projected_points: dict[int, int] = dict(base_points)
 
