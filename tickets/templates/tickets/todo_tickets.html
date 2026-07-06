@@ -63,11 +63,9 @@
                       </div>
                     </div>
 
-                    <div class="mt-3 pt-2 border-top">
-                      <div class="small fw-semibold mb-2">Checklist</div>
-                      {% with checklist_items=t.checklist_items.all %}
+                    {% with checklist_items=t.checklist_items.all %}
                       {% if checklist_items %}
-                        <div class="vstack gap-1">
+                        <div class="mt-3 pt-2 border-top vstack gap-1">
                           {% for item in checklist_items %}
                             <div class="d-flex align-items-center gap-2 small">
                               <input class="form-check-input m-0" type="checkbox" {% if item.is_done %}checked{% endif %} disabled>
@@ -75,11 +73,8 @@
                             </div>
                           {% endfor %}
                         </div>
-                      {% else %}
-                        <div class="text-body-secondary small">No checklist items yet.</div>
                       {% endif %}
-                      {% endwith %}
-                    </div>
+                    {% endwith %}
                   </a>
                 {% endfor %}
               </div>
