@@ -16,6 +16,40 @@
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'todo_tickets' %}">Back</a>
   </div>
 
+  <div class="card card-body mb-3">
+    <div class="fw-semibold mb-2">Checklist</div>
+    {% if checklist_items %}
+      <div class="vstack gap-2 mb-3">
+        {% for item in checklist_items %}
+          <form method="post" class="border rounded p-2 d-flex align-items-center gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="checklist_item_id" value="{{ item.id }}">
+            <input type="hidden" name="save_checklist_item" value="1">
+            <input class="form-check-input m-0" id="checklist-item-{{ item.id }}" type="checkbox" name="is_done" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
+            <label class="flex-grow-1 m-0 {% if item.is_done %}text-decoration-line-through text-body-secondary{% endif %}" for="checklist-item-{{ item.id }}">
+              {{ item.text }}
+            </label>
+          </form>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-body-secondary mb-3">No checklist items yet.</div>
+    {% endif %}
+
+    <form method="post" class="d-flex gap-2">
+      {% csrf_token %}
+      <input type="hidden" name="add_checklist_item" value="1">
+      <input
+        type="text"
+        class="form-control"
+        name="checklist_text"
+        placeholder="Add a subtask"
+        aria-label="Add a subtask"
+      >
+      <button class="btn btn-outline-primary" type="submit">Add</button>
+    </form>
+  </div>
+
   <form method="post" class="card card-body">
     {% csrf_token %}
     {{ form.non_field_errors }}
@@ -111,38 +145,4 @@
       </div>
     {% endif %}
   </form>
-
-  <div class="card card-body mt-3">
-    <div class="fw-semibold mb-2">Checklist</div>
-    {% if checklist_items %}
-      <div class="vstack gap-2 mb-3">
-        {% for item in checklist_items %}
-          <form method="post" class="border rounded p-2 d-flex align-items-center gap-2">
-            {% csrf_token %}
-            <input type="hidden" name="checklist_item_id" value="{{ item.id }}">
-            <input type="hidden" name="save_checklist_item" value="1">
-            <input class="form-check-input m-0" id="checklist-item-{{ item.id }}" type="checkbox" name="is_done" {% if item.is_done %}checked{% endif %} onchange="this.form.submit()">
-            <label class="flex-grow-1 m-0 {% if item.is_done %}text-decoration-line-through text-body-secondary{% endif %}" for="checklist-item-{{ item.id }}">
-              {{ item.text }}
-            </label>
-          </form>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="text-body-secondary mb-3">No checklist items yet.</div>
-    {% endif %}
-
-    <form method="post" class="d-flex gap-2">
-      {% csrf_token %}
-      <input type="hidden" name="add_checklist_item" value="1">
-      <input
-        type="text"
-        class="form-control"
-        name="checklist_text"
-        placeholder="Add a subtask"
-        aria-label="Add a subtask"
-      >
-      <button class="btn btn-outline-primary" type="submit">Add</button>
-    </form>
-  </div>
 {% endblock %}
