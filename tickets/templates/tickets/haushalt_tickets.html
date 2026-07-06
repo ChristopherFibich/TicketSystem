@@ -1,36 +1,36 @@
 {% extends 'base.html' %}
 
-{% block title %}Daily{% endblock %}
+{% block title %}Haushalt{% endblock %}
 
 {% block content %}
   <style>
-    .daily-ticket {
+    .household-ticket {
       border-left: 0.45rem solid var(--ticket-border);
       background: var(--ticket-bg);
       color: var(--ticket-text);
     }
 
-    .daily-ticket:hover,
-    .daily-ticket:focus {
+    .household-ticket:hover,
+    .household-ticket:focus {
       background: var(--ticket-bg);
       color: var(--ticket-text);
     }
   </style>
 
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h4 m-0">Daily</h1>
+    <h1 class="h4 m-0">Haushalt</h1>
     <div class="text-body-secondary small">{{ ticket_count }} ticket{{ ticket_count|pluralize }}</div>
   </div>
 
-  <form class="mb-3" method="get" action="{% url 'daily_tickets' %}">
+  <form class="mb-3" method="get" action="{% url 'haushalt_tickets' %}">
     <div class="input-group">
       <input
         type="search"
         class="form-control"
         name="q"
         value="{{ q|default:'' }}"
-        placeholder="Search Daily tickets..."
-        aria-label="Search Daily tickets"
+        placeholder="Search Haushalt tickets..."
+        aria-label="Search Haushalt tickets"
       >
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </div>
@@ -40,7 +40,7 @@
     <div class="list-group">
       {% for t in tickets %}
         <a
-          class="list-group-item list-group-item-action daily-ticket"
+          class="list-group-item list-group-item-action household-ticket"
           href="{% url 'ticket_detail' t.pk %}"
           style="--ticket-bg: {{ t.card_bg }}; --ticket-border: {{ t.card_border }}; --ticket-text: {{ t.card_text }};"
         >
@@ -60,6 +60,6 @@
       {% endfor %}
     </div>
   {% else %}
-    <div class="text-body-secondary">No Daily tickets found.</div>
+    <div class="text-body-secondary">No Haushalt tickets found.</div>
   {% endif %}
 {% endblock %}

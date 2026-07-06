@@ -81,6 +81,9 @@ def _decorate_ticket_cards(tickets: list[Ticket]) -> None:
 			ticket.age_days = None
 
 
+HOUSEHOLD_TAGS = ("Daily", "Weekly", "Monthly")
+
+
 def _ticket_list_queryset(*, include_daily: bool):
 	qs = Ticket.objects.select_related("assignee", "template").prefetch_related("tags")
 	if not include_daily:
@@ -166,12 +169,16 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def daily_tickets(request: HttpRequest) -> HttpResponse:
+def haushalt_tickets(request: HttpRequest) -> HttpResponse:
 	q = (request.GET.get("q") or "").strip()
 	tickets_qs = (
 		Ticket.objects.select_related("assignee", "template")
 		.prefetch_related("tags")
-		.filter(tags__name__iexact="Daily")
+		.filter(
+			Q(tags__name__iexact="Daily")
+			| Q(tags__name__iexact="Weekly")
+			| Q(tags__name__iexact="Monthly")
+		)
 		.distinct()
 		.order_by("-created_at")
 	)
@@ -189,7 +196,7 @@ def daily_tickets(request: HttpRequest) -> HttpResponse:
 
 	return render(
 		request,
-		"tickets/daily_tickets.html",
+		"tickets/haushalt_tickets.html",
 		{
 			"tickets": tickets,
 			"q": q,

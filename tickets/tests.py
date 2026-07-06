@@ -99,32 +99,37 @@ class GraphsAccessTests(TestCase):
 		self.assertContains(response, reverse("graphs"))
 
 
-class DailyTicketsViewTests(TestCase):
-	def test_daily_view_shows_only_daily_tagged_tickets(self):
+class HaushaltTicketsViewTests(TestCase):
+	def test_haushalt_view_shows_daily_weekly_and_monthly_tagged_tickets(self):
 		alice = User.objects.create_user(username="alice", password="pw")
 		bob = User.objects.create_user(username="bob", password="pw")
 		daily = Tag.objects.create(name="Daily")
+		weekly = Tag.objects.create(name="Weekly")
+		monthly = Tag.objects.create(name="Monthly")
 		other = Tag.objects.create(name="Other")
 
 		daily_one = Ticket.objects.create(title="Daily one", assignee=alice, created_by=alice)
 		daily_one.tags.add(daily)
-		daily_two = Ticket.objects.create(title="Daily two", assignee=bob, created_by=alice)
-		daily_two.tags.add(daily)
-		not_daily = Ticket.objects.create(title="Not daily", assignee=bob, created_by=alice)
-		not_daily.tags.add(other)
+		weekly_one = Ticket.objects.create(title="Weekly one", assignee=bob, created_by=alice)
+		weekly_one.tags.add(weekly)
+		monthly_one = Ticket.objects.create(title="Monthly one", assignee=alice, created_by=alice)
+		monthly_one.tags.add(monthly)
+		not_household = Ticket.objects.create(title="Not household", assignee=bob, created_by=alice)
+		not_household.tags.add(other)
 
 		self.client.force_login(alice)
-		response = self.client.get(reverse("daily_tickets"))
+		response = self.client.get(reverse("haushalt_tickets"))
 
 		self.assertContains(response, "Daily one")
-		self.assertContains(response, "Daily two")
-		self.assertNotContains(response, "Not daily")
+		self.assertContains(response, "Weekly one")
+		self.assertContains(response, "Monthly one")
+		self.assertNotContains(response, "Not household")
 		self.assertContains(response, "For alice")
 		self.assertContains(response, "For bob")
 		self.assertContains(response, "0d old")
 
 		tickets = list(response.context["tickets"])
-		self.assertEqual(len(tickets), 2)
+		self.assertEqual(len(tickets), 3)
 		self.assertNotEqual(tickets[0].card_bg, tickets[1].card_bg)
 
 
