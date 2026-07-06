@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily{% endblock %}
+
+{% block content %}
+  <style>
+    .daily-ticket {
+      border-left: 0.45rem solid var(--ticket-border);
+      background: var(--ticket-bg);
+      color: var(--ticket-text);
+    }
+
+    .daily-ticket:hover,
+    .daily-ticket:focus {
+      background: var(--ticket-bg);
+      color: var(--ticket-text);
+    }
+  </style>
+
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Daily</h1>
+    <div class="text-body-secondary small">{{ ticket_count }} ticket{{ ticket_count|pluralize }}</div>
+  </div>
+
+  <form class="mb-3" method="get" action="{% url 'daily_tickets' %}">
+    <div class="input-group">
+      <input
+        type="search"
+        class="form-control"
+        name="q"
+        value="{{ q|default:'' }}"
+        placeholder="Search Daily tickets..."
+        aria-label="Search Daily tickets"
+      >
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+    </div>
+  </form>
+
+  {% if tickets %}
+    <div class="list-group">
+      {% for t in tickets %}
+        <a
+          class="list-group-item list-group-item-action daily-ticket"
+          href="{% url 'ticket_detail' t.pk %}"
+          style="--ticket-bg: {{ t.card_bg }}; --ticket-border: {{ t.card_border }}; --ticket-text: {{ t.card_text }};"
+        >
+          <div class="d-flex w-100 justify-content-between align-items-start gap-2">
+            <div>
+              <div class="fw-semibold">{{ t.title }}</div>
+              <small class="text-body-secondary">
+                {% if t.template %}Template: {{ t.template.title }}{% endif %}
+              </small>
+            </div>
+            <div class="text-end">
+              <span class="badge rounded-pill" style="background: var(--ticket-border); color: white;">For {{ t.created_for_label }}</span>
+              <div class="mt-1"><small class="text-body-secondary">{{ t.age_days }}d old</small></div>
+            </div>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-body-secondary">No Daily tickets found.</div>
+  {% endif %}
+{% endblock %}

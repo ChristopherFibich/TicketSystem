@@ -36,13 +36,14 @@
         <div class="collapse navbar-collapse" id="navMenu">
           <ul class="navbar-nav ms-auto">
             {% if user.is_authenticated %}
-              <li class="nav-item"><a class="nav-link" href="{% url 'my_tickets' %}">My tickets</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'daily_tickets' %}">Daily</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'todo_tickets' %}">Todo</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'all_tickets' %}">All tickets</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
-              {% if user.username == 'Chris' %}
+              {% if can_view_graphs %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'graphs' %}">Graphs</a></li>
               {% endif %}
               <li class="nav-item"><a class="nav-link" href="{% url 'einkaufsliste' %}">Einkaufsliste</a></li>
-              <li class="nav-item"><a class="nav-link" href="{% url 'all_tickets' %}">All tickets</a></li>
             {% endif %}
             <li class="nav-item"><a class="nav-link" href="{% url 'scoreboard' %}">Scoreboard</a></li>
             {% if user.is_authenticated %}

@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from .forms import TicketCreateForm, TicketUpdateForm
+from .access import can_view_graphs
 from .models import (
 	Completion,
 	DashboardToggle,
@@ -32,6 +33,59 @@ from .models import (
 )
 
 AuthUser = get_user_model()
+
+
+def _default_ticket_card_style() -> dict[str, str]:
+	return {
+		"bg": "#f8f9fa",
+		"border": "#adb5bd",
+		"text": "#495057",
+	}
+
+
+def _build_ticket_card_styles(tickets: list[Ticket]) -> dict[int, dict[str, str]]:
+	assignees: list[tuple[int, str]] = []
+	seen_user_ids: set[int] = set()
+	for ticket in tickets:
+		if ticket.assignee_id and ticket.assignee_id not in seen_user_ids:
+			assignees.append((ticket.assignee_id, (ticket.assignee.username or "").strip()))
+			seen_user_ids.add(ticket.assignee_id)
+
+	assignees.sort(key=lambda item: (item[1].lower(), item[0]))
+
+	styles: dict[int, dict[str, str]] = {}
+	for index, (user_id, _) in enumerate(assignees):
+		hue = int((index * 137.508 + 18) % 360)
+		styles[user_id] = {
+			"bg": f"hsl({hue} 80% 92%)",
+			"border": f"hsl({hue} 55% 44%)",
+			"text": f"hsl({hue} 30% 18%)",
+		}
+	return styles
+
+
+def _decorate_ticket_cards(tickets: list[Ticket]) -> None:
+	styles = _build_ticket_card_styles(tickets)
+	default_style = _default_ticket_card_style()
+	now = timezone.now()
+	for ticket in tickets:
+		style = styles.get(ticket.assignee_id, default_style)
+		ticket.card_bg = style["bg"]
+		ticket.card_border = style["border"]
+		ticket.card_text = style["text"]
+		ticket.created_for_label = ticket.assignee.username if ticket.assignee else "Unassigned"
+		if ticket.created_at:
+			delta = now - ticket.created_at
+			ticket.age_days = max(0, delta.days)
+		else:
+			ticket.age_days = None
+
+
+def _ticket_list_queryset(*, include_daily: bool):
+	qs = Ticket.objects.select_related("assignee", "template").prefetch_related("tags")
+	if not include_daily:
+		qs = qs.exclude(tags__name__iexact="Daily")
+	return qs.distinct()
 
 
 def _ticket_bg_class(ticket: Ticket, now) -> str:
@@ -87,6 +141,10 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 	}
 	for ticket in tickets:
 		ticket.bg_class = _ticket_bg_class(ticket, now)
+		if ticket.created_at:
+			ticket.age_days = max(0, (now - ticket.created_at).days)
+		else:
+			ticket.age_days = None
 
 		grouped[ticket.status].append(ticket)
 
@@ -103,6 +161,39 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 			"sections": sections,
 			"q": q,
 			"show_done": show_done,
+		},
+	)
+
+
+@login_required
+def daily_tickets(request: HttpRequest) -> HttpResponse:
+	q = (request.GET.get("q") or "").strip()
+	tickets_qs = (
+		Ticket.objects.select_related("assignee", "template")
+		.prefetch_related("tags")
+		.filter(tags__name__iexact="Daily")
+		.distinct()
+		.order_by("-created_at")
+	)
+	if q:
+		tickets_qs = tickets_qs.filter(
+			Q(title__icontains=q)
+			| Q(description__icontains=q)
+			| Q(assignee__username__icontains=q)
+			| Q(template__title__icontains=q)
+			| Q(tags__name__icontains=q)
+		).distinct()
+
+	tickets = list(tickets_qs)
+	_decorate_ticket_cards(tickets)
+
+	return render(
+		request,
+		"tickets/daily_tickets.html",
+		{
+			"tickets": tickets,
+			"q": q,
+			"ticket_count": len(tickets),
 		},
 	)
 
@@ -237,17 +328,21 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
 
 @login_required
+def todo_tickets(request: HttpRequest) -> HttpResponse:
+	return _ticket_list_view(request, include_daily=False, title="Todo", heading="Todo")
+
+
+@login_required
 def all_tickets(request: HttpRequest) -> HttpResponse:
+	return _ticket_list_view(request, include_daily=True, title="All Tickets", heading="All Tickets")
+
+
+def _ticket_list_view(request: HttpRequest, *, include_daily: bool, title: str, heading: str) -> HttpResponse:
 	now = timezone.now()
 	q = (request.GET.get("q") or "").strip()
 	show_done = (request.GET.get("show_done") or "").strip() in {"1", "true", "yes", "on"}
 
-	tickets = (
-		Ticket.objects.select_related("assignee", "template")
-		.prefetch_related("tags")
-		.all()
-		.order_by("status", "-created_at")
-	)
+	tickets = _ticket_list_queryset(include_daily=include_daily).order_by("status", "-created_at")
 	if not show_done:
 		tickets = tickets.exclude(status=TicketStatus.DONE)
 	if q:
@@ -258,8 +353,17 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 			| Q(template__title__icontains=q)
 			| Q(tags__name__icontains=q)
 		).distinct()
+
 	for ticket in tickets:
 		ticket.bg_class = _ticket_bg_class(ticket, now)
+		if ticket.created_at:
+			ticket.age_days = max(0, (now - ticket.created_at).days)
+		else:
+			ticket.age_days = None
+		if ticket.created_at:
+			ticket.age_days = max(0, (now - ticket.created_at).days)
+		else:
+			ticket.age_days = None
 
 	return render(
 		request,
@@ -268,6 +372,8 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 			"tickets": tickets,
 			"q": q,
 			"show_done": show_done,
+			"page_title": title,
+			"page_heading": heading,
 		},
 	)
 
@@ -435,8 +541,7 @@ def pets(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def graphs(request: HttpRequest) -> HttpResponse:
-	# Chris-only page.
-	if (request.user.username or "") != "Chris":
+	if not can_view_graphs(request.user):
 		return redirect("dashboard")
 
 	if request.method == "POST":

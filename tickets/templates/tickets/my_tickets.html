@@ -65,7 +65,7 @@
               <a class="list-group-item list-group-item-action {{ t.bg_class }}" href="{% url 'ticket_detail' t.pk %}">
                 <div class="d-flex w-100 justify-content-between">
                   <div class="fw-semibold">{{ t.title }}</div>
-                  <small class="text-body-secondary">{{ t.created_at|date:"Y-m-d" }}</small>
+                  <small class="text-body-secondary">{{ t.age_days }}d old</small>
                 </div>
                 {% if t.template %}
                   <small class="text-body-secondary">Template: {{ t.template.title }}</small>

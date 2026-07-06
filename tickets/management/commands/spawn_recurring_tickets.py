@@ -17,7 +17,7 @@ from tickets.models import (
     TicketStatus,
     TicketTemplate,
 )
-from tickets.scheduling import next_scheduled_date
+from tickets.scheduling import next_scheduled_for
 
 User = get_user_model()
 
@@ -143,10 +143,7 @@ class Command(BaseCommand):
             self.stdout.write(f"[{template.id}] {template.title}: pending ticket exists; skipping")
             return 0
 
-        if template.last_completed_for is None:
-            next_date = template.start_date
-        else:
-            next_date = next_scheduled_date(template, template.last_completed_for)
+        next_date = next_scheduled_for(template)
         if next_date > today:
             self.stdout.write(f"[{template.id}] {template.title}: next due {next_date} (not yet)")
             return 0
@@ -183,6 +180,8 @@ class Command(BaseCommand):
             )
             if template.tags.exists():
                 ticket.tags.set(template.tags.all())
+            template.last_scheduled_for = next_date
+            template.save(update_fields=["last_scheduled_for", "updated_at"])
 
         self.stdout.write(msg)
         return 1

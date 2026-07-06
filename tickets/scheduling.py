@@ -17,6 +17,14 @@ def _first_weekday_on_or_after(start: date, weekday: int) -> date:
     return start + timedelta(days=delta)
 
 
+def _first_monthday_on_or_after(start: date, day: int) -> date:
+    candidate = date(start.year, start.month, min(day, 28))
+    if candidate < start:
+        y, m = _add_months(start.year, start.month, 1)
+        candidate = date(y, m, min(day, 28))
+    return candidate
+
+
 def _next_daily(template: TicketTemplate, after: date) -> date:
     if template.interval < 1:
         raise CommandError(f"Template '{template}' has invalid interval")
@@ -26,6 +34,9 @@ def _next_daily(template: TicketTemplate, after: date) -> date:
 def _next_weekly(template: TicketTemplate, after: date) -> date:
     if template.interval < 1:
         raise CommandError(f"Template '{template}' has invalid interval")
+
+    if template.weekly_weekday is not None and after.weekday() != template.weekly_weekday:
+        after = _first_weekday_on_or_after(after, template.weekly_weekday)
     return after + timedelta(days=template.interval * 7)
 
 
@@ -33,8 +44,7 @@ def _next_monthly(template: TicketTemplate, after: date) -> date:
     if template.interval < 1:
         raise CommandError(f"Template '{template}' has invalid interval")
 
-    # Keep the same day-of-month as the completion date (clamped to 28 to avoid invalid dates).
-    day = min(after.day, 28)
+    day = min(template.monthly_day or after.day, 28)
     y, m = _add_months(after.year, after.month, template.interval)
     return date(y, m, day)
 
@@ -52,11 +62,15 @@ def next_scheduled_date(template: TicketTemplate, after: date) -> date:
 def next_scheduled_for(template: TicketTemplate) -> date:
     """Return the next scheduled date for a template.
 
-    Uses template.last_completed_for as the reference point; if missing, treats it
-    as "not completed yet" (i.e. next is based off start_date).
+    Uses template.last_scheduled_for as the reference point when available.
+    Falls back to template.last_completed_for for older rows, then start_date.
     """
 
-    last = template.last_completed_for
+    last = template.last_scheduled_for or template.last_completed_for
     if last is None:
+        if template.frequency == RecurrenceFrequency.WEEKLY and template.weekly_weekday is not None:
+            return _first_weekday_on_or_after(template.start_date, template.weekly_weekday)
+        if template.frequency == RecurrenceFrequency.MONTHLY and template.monthly_day is not None:
+            return _first_monthday_on_or_after(template.start_date, template.monthly_day)
         return template.start_date
     return next_scheduled_date(template, last)
