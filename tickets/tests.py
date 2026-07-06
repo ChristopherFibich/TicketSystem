@@ -175,6 +175,18 @@ class TicketListSplitTests(TestCase):
 		self.assertEqual([section["label"] for section in sections], ["Low", "Med", "High"])
 		self.assertEqual([section["count"] for section in sections], [1, 1, 1])
 
+	def test_blank_priority_falls_back_to_med(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		ticket = Ticket.objects.create(title="Unprioritized task", assignee=user, created_by=user, priority=TicketPriority.LOW)
+		Ticket.objects.filter(pk=ticket.pk).update(priority="")
+
+		self.client.force_login(user)
+		response = self.client.get(reverse("todo_tickets"))
+
+		self.assertContains(response, "Unprioritized task")
+		sections = response.context["sections"]
+		self.assertEqual([section["count"] for section in sections], [0, 1, 0])
+
 
 class TicketPriorityFormTests(TestCase):
 	def test_ticket_update_form_persists_priority(self):

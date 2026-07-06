@@ -86,6 +86,12 @@ HOUSEHOLD_TAGS = ("Daily", "Weekly", "Monthly")
 TODO_PRIORITY_ORDER = [TicketPriority.LOW, TicketPriority.MED, TicketPriority.HIGH]
 
 
+def _effective_ticket_priority(ticket: Ticket) -> TicketPriority:
+	if ticket.priority in TicketPriority.values:
+		return TicketPriority(ticket.priority)
+	return TicketPriority.MED
+
+
 def _ticket_list_queryset(*, include_daily: bool):
 	qs = Ticket.objects.select_related("assignee", "template").prefetch_related("tags")
 	if not include_daily:
@@ -351,7 +357,7 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 def _group_todo_tickets_by_priority(tickets: list[Ticket]) -> list[dict[str, object]]:
 	sections: list[dict[str, object]] = []
 	for priority in TODO_PRIORITY_ORDER:
-		items = [ticket for ticket in tickets if ticket.priority == priority]
+		items = [ticket for ticket in tickets if _effective_ticket_priority(ticket) == priority]
 		sections.append(
 			{
 				"priority": priority,
@@ -368,7 +374,7 @@ def _todo_ticket_list_view(request: HttpRequest) -> HttpResponse:
 	q = (request.GET.get("q") or "").strip()
 	show_done = (request.GET.get("show_done") or "").strip() in {"1", "true", "yes", "on"}
 
-	tickets = _ticket_list_queryset(include_daily=False).order_by("priority", "status", "-created_at")
+	tickets = _ticket_list_queryset(include_daily=False).order_by("status", "-created_at")
 	if not show_done:
 		tickets = tickets.exclude(status=TicketStatus.DONE)
 	if q:
