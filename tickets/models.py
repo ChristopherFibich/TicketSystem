@@ -14,6 +14,12 @@ class TicketStatus(models.TextChoices):
 	DONE = "DONE", "Done"
 
 
+class TicketPriority(models.TextChoices):
+	LOW = "LOW", "Low"
+	MED = "MED", "Med"
+	HIGH = "HIGH", "High"
+
+
 class RecurrenceFrequency(models.TextChoices):
 	DAILY = "DAILY", "Daily"
 	WEEKLY = "WEEKLY", "Weekly"
@@ -114,6 +120,7 @@ class Ticket(models.Model):
 	title = models.CharField(max_length=200)
 	description = models.TextField(blank=True)
 	status = models.CharField(max_length=10, choices=TicketStatus.choices, default=TicketStatus.NEW)
+	priority = models.CharField(max_length=10, choices=TicketPriority.choices, default=TicketPriority.MED)
 
 	counts_for_score = models.BooleanField(
 		default=True,

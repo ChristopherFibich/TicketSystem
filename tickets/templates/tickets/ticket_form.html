@@ -41,6 +41,12 @@
       </div>
     </div>
 
+    <div class="mb-3">
+      <label class="form-label" for="id_priority">Priority</label>
+      {{ form.priority }}
+      {{ form.priority.errors }}
+    </div>
+
     <div class="form-check mb-3">
       {{ form.counts_for_score }}
       <label class="form-check-label" for="id_counts_for_score">Counts for score</label>

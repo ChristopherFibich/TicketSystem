@@ -122,8 +122,8 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-	list_display = ["title", "status", "assignee", "template", "scheduled_for_date", "created_at", "completed_at"]
-	list_filter = ["status", "template"]
+	list_display = ["title", "status", "priority", "assignee", "template", "scheduled_for_date", "created_at", "completed_at"]
+	list_filter = ["status", "priority", "template"]
 	search_fields = ["title", "description"]
 	autocomplete_fields = ["assignee", "created_by", "template"]
 	filter_horizontal = ["tags"]

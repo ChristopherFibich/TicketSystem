@@ -9,7 +9,8 @@ from django.test.client import RequestFactory
 from django.urls import reverse
 
 from .admin import TicketTemplateAdmin
-from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketStatus, TicketTemplate
+from .forms import TicketUpdateForm
+from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketPriority, TicketStatus, TicketTemplate
 
 
 User = get_user_model()
@@ -154,4 +155,46 @@ class TicketListSplitTests(TestCase):
 		self.assertContains(all_response, "Normal task")
 		self.assertContains(all_response, "Daily task")
 		self.assertContains(all_response, "0d old")
+
+	def test_todo_groups_tickets_by_priority(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		low = Ticket.objects.create(title="Low task", assignee=user, created_by=user, priority=TicketPriority.LOW)
+		med = Ticket.objects.create(title="Med task", assignee=user, created_by=user, priority=TicketPriority.MED)
+		high = Ticket.objects.create(title="High task", assignee=user, created_by=user, priority=TicketPriority.HIGH)
+
+		self.client.force_login(user)
+		response = self.client.get(reverse("todo_tickets"))
+
+		self.assertContains(response, "Low")
+		self.assertContains(response, "Med")
+		self.assertContains(response, "High")
+		self.assertContains(response, "Low task")
+		self.assertContains(response, "Med task")
+		self.assertContains(response, "High task")
+		sections = response.context["sections"]
+		self.assertEqual([section["label"] for section in sections], ["Low", "Med", "High"])
+		self.assertEqual([section["count"] for section in sections], [1, 1, 1])
+
+
+class TicketPriorityFormTests(TestCase):
+	def test_ticket_update_form_persists_priority(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		ticket = Ticket.objects.create(title="Priority task", assignee=user, created_by=user)
+
+		form = TicketUpdateForm(
+			data={
+				"title": "Priority task",
+				"description": "",
+				"assignee": user.pk,
+				"status": TicketStatus.NEW,
+				"priority": TicketPriority.HIGH,
+				"counts_for_score": True,
+				"tags": [],
+			},
+			instance=ticket,
+		)
+
+		self.assertTrue(form.is_valid())
+		updated = form.save()
+		self.assertEqual(updated.priority, TicketPriority.HIGH)
 

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Todo{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h4 m-0">Todo</h1>
+      <div class="text-body-secondary small">{{ ticket_count }} ticket{{ ticket_count|pluralize }}</div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      <a
+        class="btn btn-outline-secondary btn-sm"
+        href="{% url 'todo_tickets' %}?{% if q %}q={{ q|urlencode }}&{% endif %}show_done={% if show_done %}0{% else %}1{% endif %}"
+      >
+        Show done
+      </a>
+      <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New ticket</a>
+    </div>
+  </div>
+
+  <form class="mb-3" method="get" action="{% url 'todo_tickets' %}">
+    {% if show_done %}
+      <input type="hidden" name="show_done" value="1">
+    {% endif %}
+    <div class="input-group">
+      <input
+        type="search"
+        class="form-control"
+        name="q"
+        value="{{ q|default:'' }}"
+        placeholder="Search tickets..."
+        aria-label="Search tickets"
+      >
+      <button class="btn btn-outline-secondary" type="submit">Search</button>
+    </div>
+  </form>
+
+  <div class="row g-3">
+    {% for section in sections %}
+      <div class="col-12 col-lg-4">
+        <div class="card h-100">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <span class="fw-semibold">{{ section.label }}</span>
+            <span class="badge text-bg-secondary">{{ section.count }}</span>
+          </div>
+          <div class="card-body">
+            {% if section.tickets %}
+              <div class="list-group">
+                {% for t in section.tickets %}
+                  <a class="list-group-item list-group-item-action {{ t.bg_class }}" href="{% url 'ticket_detail' t.pk %}">
+                    <div class="d-flex w-100 justify-content-between align-items-start gap-2">
+                      <div>
+                        <div class="fw-semibold">{{ t.title }}</div>
+                        <small class="text-body-secondary">
+                          Assignee: <strong>{{ t.assignee.username|default:"(unassigned)" }}</strong>
+                          {% if t.template %} · Template: {{ t.template.title }}{% endif %}
+                        </small>
+                      </div>
+                      <div class="text-end">
+                        <span class="badge text-bg-secondary">{{ t.get_status_display }}</span>
+                        <div><small class="text-body-secondary">{{ t.age_days }}d old</small></div>
+                      </div>
+                    </div>
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="text-body-secondary">No {{ section.label|lower }} tickets.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

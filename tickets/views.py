@@ -27,6 +27,7 @@ from .models import (
 	ShoppingItem,
 	Tag,
 	Ticket,
+	TicketPriority,
 	TicketTemplate,
 	TicketStatus,
 	WeightEntry,
@@ -82,6 +83,7 @@ def _decorate_ticket_cards(tickets: list[Ticket]) -> None:
 
 
 HOUSEHOLD_TAGS = ("Daily", "Weekly", "Monthly")
+TODO_PRIORITY_ORDER = [TicketPriority.LOW, TicketPriority.MED, TicketPriority.HIGH]
 
 
 def _ticket_list_queryset(*, include_daily: bool):
@@ -214,6 +216,7 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 
 	def _initial_from_template(tpl: TicketTemplate | None):
 		initial = {"assignee": request.user, "status": TicketStatus.NEW}
+		initial["priority"] = TicketPriority.MED
 		if tpl:
 			initial.update(
 				{
@@ -221,6 +224,7 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 					"title": tpl.title,
 					"description": tpl.description,
 					"counts_for_score": tpl.counts_for_score,
+					"priority": TicketPriority.MED,
 					"tags": list(tpl.tags.values_list("id", flat=True)),
 				}
 			)
@@ -336,12 +340,66 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def todo_tickets(request: HttpRequest) -> HttpResponse:
-	return _ticket_list_view(request, include_daily=False, title="Todo", heading="Todo")
+	return _todo_ticket_list_view(request)
 
 
 @login_required
 def all_tickets(request: HttpRequest) -> HttpResponse:
 	return _ticket_list_view(request, include_daily=True, title="All Tickets", heading="All Tickets")
+
+
+def _group_todo_tickets_by_priority(tickets: list[Ticket]) -> list[dict[str, object]]:
+	sections: list[dict[str, object]] = []
+	for priority in TODO_PRIORITY_ORDER:
+		items = [ticket for ticket in tickets if ticket.priority == priority]
+		sections.append(
+			{
+				"priority": priority,
+				"label": priority.label,
+				"tickets": items,
+				"count": len(items),
+			}
+		)
+	return sections
+
+
+def _todo_ticket_list_view(request: HttpRequest) -> HttpResponse:
+	now = timezone.now()
+	q = (request.GET.get("q") or "").strip()
+	show_done = (request.GET.get("show_done") or "").strip() in {"1", "true", "yes", "on"}
+
+	tickets = _ticket_list_queryset(include_daily=False).order_by("priority", "status", "-created_at")
+	if not show_done:
+		tickets = tickets.exclude(status=TicketStatus.DONE)
+	if q:
+		tickets = tickets.filter(
+			Q(title__icontains=q)
+			| Q(description__icontains=q)
+			| Q(assignee__username__icontains=q)
+			| Q(template__title__icontains=q)
+			| Q(tags__name__icontains=q)
+		).distinct()
+
+	tickets = list(tickets)
+	for ticket in tickets:
+		ticket.bg_class = _ticket_bg_class(ticket, now)
+		if ticket.created_at:
+			ticket.age_days = max(0, (now - ticket.created_at).days)
+		else:
+			ticket.age_days = None
+
+	sections = _group_todo_tickets_by_priority(tickets)
+
+	return render(
+		request,
+		"tickets/todo_tickets.html",
+		{
+			"sections": sections,
+			"q": q,
+			"show_done": show_done,
+			"ticket_count": len(tickets),
+		},
+	)
 
 
 def _ticket_list_view(request: HttpRequest, *, include_daily: bool, title: str, heading: str) -> HttpResponse:
@@ -363,10 +421,6 @@ def _ticket_list_view(request: HttpRequest, *, include_daily: bool, title: str, 
 
 	for ticket in tickets:
 		ticket.bg_class = _ticket_bg_class(ticket, now)
-		if ticket.created_at:
-			ticket.age_days = max(0, (now - ticket.created_at).days)
-		else:
-			ticket.age_days = None
 		if ticket.created_at:
 			ticket.age_days = max(0, (now - ticket.created_at).days)
 		else:
