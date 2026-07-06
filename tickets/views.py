@@ -409,7 +409,7 @@ def _todo_ticket_list_view(request: HttpRequest) -> HttpResponse:
 			| Q(tags__name__icontains=q)
 		).distinct()
 
-	tickets = list(tickets)
+	tickets = list(tickets.prefetch_related("checklist_items"))
 	for ticket in tickets:
 		ticket.bg_class = _ticket_bg_class(ticket, now)
 		if ticket.created_at:
