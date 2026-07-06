@@ -1,11 +1,14 @@
 from datetime import date
 
+from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.core.management import call_command
 from django.test import TestCase
+from django.test.client import RequestFactory
 from django.urls import reverse
 
+from .admin import TicketTemplateAdmin
 from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketStatus, TicketTemplate
 
 
@@ -42,6 +45,28 @@ class RecurringTicketSchedulingTests(TestCase):
 
 		scheduled_dates = list(Ticket.objects.filter(template=template).values_list("scheduled_for_date", flat=True).order_by("scheduled_for_date"))
 		self.assertEqual(scheduled_dates, [date(2026, 7, 4), date(2026, 7, 11)])
+
+
+class TicketTemplateAdminDefaultsTests(TestCase):
+	def test_pool_add_form_defaults_to_all_active_users(self):
+		request_factory = RequestFactory()
+		request = request_factory.get("/admin/tickets/tickettemplate/add/")
+
+		superuser = User.objects.create_superuser(username="admin", email="admin@example.com", password="pw")
+		alice = User.objects.create_user(username="alice", password="pw")
+		bob = User.objects.create_user(username="bob", password="pw", is_active=False)
+
+		request.user = superuser
+		admin_instance = TicketTemplateAdmin(TicketTemplate, admin.site)
+		inline = admin_instance.get_inline_instances(request)[0]
+
+		formset_kwargs = admin_instance.get_formset_kwargs(request, None, inline, "eligibilities")
+
+		self.assertEqual(len(formset_kwargs["initial"]), 2)
+		self.assertCountEqual(
+			[row["user"] for row in formset_kwargs["initial"]],
+			[superuser.pk, alice.pk],
+		)
 
 
 class GraphsAccessTests(TestCase):

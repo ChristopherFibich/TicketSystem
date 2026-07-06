@@ -47,6 +47,16 @@ class TicketTemplateAdmin(admin.ModelAdmin):
 	filter_horizontal = ["tags"]
 	actions = ["add_tags_action"]
 
+	def get_formset_kwargs(self, request, obj, inline, prefix):
+		formset_params = super().get_formset_kwargs(request, obj, inline, prefix)
+		if obj is None and request.method != "POST" and inline.model is TicketTemplateEligibility:
+			User = get_user_model()
+			formset_params["initial"] = [
+				{"user": user.pk, "weight": 1}
+				for user in User.objects.filter(is_active=True).order_by("username", "id")
+			]
+		return formset_params
+
 	class AddTagsForm(forms.Form):
 		tags = forms.ModelMultipleChoiceField(
 			label="Tags to add",
