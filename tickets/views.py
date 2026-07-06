@@ -26,6 +26,7 @@ from .models import (
 	PetType,
 	ShoppingItem,
 	Tag,
+	TicketChecklistItem,
 	Ticket,
 	TicketPriority,
 	TicketTemplate,
@@ -272,10 +273,25 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
-	ticket = get_object_or_404(Ticket.objects.select_related("assignee", "template"), pk=pk)
+	ticket = get_object_or_404(Ticket.objects.select_related("assignee", "template").prefetch_related("checklist_items"), pk=pk)
 	existing_completion_user_ids = list(ticket.completions.values_list("completed_by_id", flat=True))
 
 	if request.method == "POST":
+		if "add_checklist_item" in request.POST:
+			text = (request.POST.get("checklist_text") or "").strip()
+			if text:
+				max_order = ticket.checklist_items.order_by("-order").values_list("order", flat=True).first() or 0
+				TicketChecklistItem.objects.create(ticket=ticket, text=text, order=max_order + 1)
+			return redirect("ticket_detail", pk=ticket.pk)
+
+		if "save_checklist_item" in request.POST:
+			item_id = (request.POST.get("checklist_item_id") or "").strip()
+			if item_id.isdigit():
+				item = get_object_or_404(TicketChecklistItem, pk=int(item_id), ticket=ticket)
+				item.is_done = "is_done" in request.POST
+				item.save(update_fields=["is_done", "updated_at"])
+			return redirect("ticket_detail", pk=ticket.pk)
+
 		if "share_points" in request.POST:
 			if ticket.status != TicketStatus.DONE:
 				return redirect("ticket_detail", pk=ticket.pk)
@@ -336,6 +352,7 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 	completions = list(ticket.completions.select_related("completed_by").order_by("completed_at"))
 	completion = completions[0] if completions else None
 	share_candidates = AuthUser.objects.filter(is_active=True).exclude(id__in=existing_completion_user_ids).order_by("username")
+	checklist_items = list(ticket.checklist_items.all())
 	return render(
 		request,
 		"tickets/ticket_detail.html",
@@ -345,6 +362,7 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 			"completion": completion,
 			"completions": completions,
 			"share_candidates": share_candidates,
+			"checklist_items": checklist_items,
 		},
 	)
 

@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from .admin import TicketTemplateAdmin
 from .forms import TicketUpdateForm
-from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketPriority, TicketStatus, TicketTemplate
+from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate
 
 
 User = get_user_model()
@@ -302,4 +302,25 @@ class TicketPriorityFormTests(TestCase):
 		self.assertTrue(form.is_valid())
 		updated = form.save()
 		self.assertEqual(updated.priority, TicketPriority.HIGH)
+
+
+class TicketChecklistTests(TestCase):
+	def test_ticket_detail_adds_and_toggles_checklist_items(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		ticket = Ticket.objects.create(title="Checklist task", assignee=user, created_by=user)
+		self.client.force_login(user)
+
+		response = self.client.post(reverse("ticket_detail", args=[ticket.pk]), {"add_checklist_item": "1", "checklist_text": "Subtask one"})
+		self.assertRedirects(response, reverse("ticket_detail", args=[ticket.pk]))
+		item = TicketChecklistItem.objects.get(ticket=ticket)
+		self.assertEqual(item.text, "Subtask one")
+		self.assertFalse(item.is_done)
+
+		response = self.client.post(
+			reverse("ticket_detail", args=[ticket.pk]),
+			{"save_checklist_item": "1", "checklist_item_id": item.pk, "is_done": "on"},
+		)
+		self.assertRedirects(response, reverse("ticket_detail", args=[ticket.pk]))
+		item.refresh_from_db()
+		self.assertTrue(item.is_done)
 

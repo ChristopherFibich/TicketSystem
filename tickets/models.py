@@ -219,6 +219,24 @@ class Ticket(models.Model):
 		return completion
 
 
+class TicketChecklistItem(models.Model):
+	ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="checklist_items")
+	text = models.CharField(max_length=200)
+	is_done = models.BooleanField(default=False)
+	order = models.PositiveSmallIntegerField(default=1)
+	created_at = models.DateTimeField(auto_now_add=True)
+	updated_at = models.DateTimeField(auto_now=True)
+
+	class Meta:
+		ordering = ["order", "id"]
+		constraints = [
+			models.UniqueConstraint(fields=["ticket", "order"], name="unique_ticket_checklist_order"),
+		]
+
+	def __str__(self) -> str:
+		return f"{self.ticket}: {self.text}"
+
+
 class Completion(models.Model):
 	ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="completions")
 	completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="completions")
