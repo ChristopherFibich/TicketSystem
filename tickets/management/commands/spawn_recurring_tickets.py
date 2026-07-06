@@ -7,12 +7,10 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from tickets.models import (
     AssignmentMode,
-    Completion,
     Ticket,
     TicketStatus,
     TicketTemplate,
@@ -21,21 +19,6 @@ from tickets.scheduling import next_scheduled_for
 
 User = get_user_model()
 
-# Fairness strategy (v1): balance lifetime completed score so that, over time,
-# household members converge toward the same number of tickets done.
-#
-# Because v1 points are fixed per template, balancing total points and balancing
-# completion count are effectively equivalent.
-
-
-def _household_completion_queryset():
-    return Completion.objects.filter(
-        Q(ticket__tags__name__iexact="Daily")
-        | Q(ticket__tags__name__iexact="Weekly")
-        | Q(ticket__tags__name__iexact="Monthly")
-    )
-
-
 @dataclass(frozen=True)
 class Candidate:
     user: User
@@ -43,13 +26,6 @@ class Candidate:
 
 
 def choose_assignee(template: TicketTemplate) -> User | None:
-    return choose_assignee_with_projected_totals(template, projected_points=None)
-
-
-def choose_assignee_with_projected_totals(
-    template: TicketTemplate,
-    projected_points: dict[int, int] | None,
-) -> User | None:
     if template.assignment_mode == AssignmentMode.FIXED:
         return template.fixed_assignee
 
@@ -58,34 +34,8 @@ def choose_assignee_with_projected_totals(
     if not candidates:
         return None
 
-    if projected_points is None:
-        user_ids = [c.user.id for c in candidates]
-        totals = {
-            row["completed_by"]: int(row["points"] or 0)
-            for row in _household_completion_queryset()
-            .filter(completed_by_id__in=user_ids)
-            .distinct()
-            .values("completed_by")
-            .annotate(points=Sum("points_awarded"), count=Count("id"))
-        }
-        projected_points = totals
-
-    best_users: list[Candidate] = []
-    best_score: int | None = None
-
-    for c in candidates:
-        score = int(projected_points.get(c.user.id, 0))
-        if best_score is None or score < best_score:
-            best_score = score
-            best_users = [c]
-        elif score == best_score:
-            best_users.append(c)
-
-    if len(best_users) == 1:
-        return best_users[0].user
-
-    weights = [c.weight for c in best_users]
-    return random.choices([c.user for c in best_users], weights=weights, k=1)[0]
+    weights = [c.weight for c in candidates]
+    return random.choices([c.user for c in candidates], weights=weights, k=1)[0]
 
 
 class Command(BaseCommand):
@@ -110,16 +60,6 @@ class Command(BaseCommand):
             self.stdout.write("No active templates.")
             return
 
-        # Build a per-run projected total so each new assignment re-balances.
-        base_points = {
-            row["completed_by"]: int(row["points"] or 0)
-            for row in _household_completion_queryset()
-            .distinct()
-            .values("completed_by")
-            .annotate(points=Sum("points_awarded"))
-        }
-        projected_points: dict[int, int] = dict(base_points)
-
         created_count = 0
         for template in templates:
             created_count += self._spawn_for_template(
@@ -127,7 +67,6 @@ class Command(BaseCommand):
                 today=today,
                 dry_run=dry_run,
                 max_per_template=max_per_template,
-                projected_points=projected_points,
             )
 
         self.stdout.write(self.style.SUCCESS(f"Done. Created {created_count} ticket(s)."))
@@ -138,7 +77,6 @@ class Command(BaseCommand):
         today: date,
         dry_run: bool,
         max_per_template: int,
-        projected_points: dict[int, int],
     ) -> int:
         if template.interval < 1:
             raise CommandError(f"Template '{template}' has interval < 1")
@@ -165,16 +103,11 @@ class Command(BaseCommand):
             self.stdout.write(f"[{template.id}] {template.title}: already exists for {next_date}")
             return 0
 
-        assignee = choose_assignee_with_projected_totals(template, projected_points=projected_points)
+        assignee = choose_assignee(template)
         if template.assignment_mode == AssignmentMode.FIXED and assignee is None:
             raise CommandError(f"Template '{template}' is FIXED but has no fixed_assignee")
         if template.assignment_mode == AssignmentMode.POOL and assignee is None:
             raise CommandError(f"Template '{template}' has no eligible users")
-
-        # Update the per-run projection so the next ticket re-balances.
-        if assignee is not None and template.assignment_mode == AssignmentMode.POOL:
-            fairness_points = max(1, int(template.points or 1))
-            projected_points[assignee.id] = int(projected_points.get(assignee.id, 0)) + fairness_points
 
         msg = f"[{template.id}] {template.title}: create ticket for {next_date} -> {assignee}"
         if dry_run:

@@ -1,4 +1,5 @@
 from datetime import date
+from unittest.mock import patch
 
 from django.contrib import admin
 from django.contrib.auth import get_user_model
@@ -97,10 +98,11 @@ class RecurringTicketSchedulingTests(TestCase):
 		household_ticket.tags.add(daily_tag)
 		household_ticket.mark_done(completed_by=user_two)
 
-		call_command("spawn_recurring_tickets", date="2026-07-07")
+		with patch("tickets.management.commands.spawn_recurring_tickets.random.choices", return_value=[user_two]):
+			call_command("spawn_recurring_tickets", date="2026-07-07")
 
 		spawned = Ticket.objects.get(template=pool_template, scheduled_for_date=date(2026, 7, 7))
-		self.assertEqual(spawned.assignee, user_one)
+		self.assertEqual(spawned.assignee, user_two)
 
 
 class TicketTemplateAdminDefaultsTests(TestCase):
