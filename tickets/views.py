@@ -95,7 +95,11 @@ def _effective_ticket_priority(ticket: Ticket) -> TicketPriority:
 def _ticket_list_queryset(*, include_daily: bool):
 	qs = Ticket.objects.select_related("assignee", "template").prefetch_related("tags")
 	if not include_daily:
-		qs = qs.exclude(tags__name__iexact="Daily")
+		qs = qs.exclude(
+			Q(tags__name__iexact="Daily")
+			| Q(tags__name__iexact="Weekly")
+			| Q(tags__name__iexact="Monthly")
+		)
 	return qs.distinct()
 
 

@@ -138,10 +138,16 @@ class TicketListSplitTests(TestCase):
 	def test_todo_excludes_daily_and_all_includes_everything(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		daily = Tag.objects.create(name="Daily")
+		weekly = Tag.objects.create(name="Weekly")
+		monthly = Tag.objects.create(name="Monthly")
 		other = Tag.objects.create(name="Other")
 
 		daily_ticket = Ticket.objects.create(title="Daily task", assignee=user, created_by=user)
 		daily_ticket.tags.add(daily)
+		weekly_ticket = Ticket.objects.create(title="Weekly task", assignee=user, created_by=user)
+		weekly_ticket.tags.add(weekly)
+		monthly_ticket = Ticket.objects.create(title="Monthly task", assignee=user, created_by=user)
+		monthly_ticket.tags.add(monthly)
 		normal_ticket = Ticket.objects.create(title="Normal task", assignee=user, created_by=user)
 		normal_ticket.tags.add(other)
 
@@ -150,10 +156,14 @@ class TicketListSplitTests(TestCase):
 		todo_response = self.client.get(reverse("todo_tickets"))
 		self.assertContains(todo_response, "Normal task")
 		self.assertNotContains(todo_response, "Daily task")
+		self.assertNotContains(todo_response, "Weekly task")
+		self.assertNotContains(todo_response, "Monthly task")
 
 		all_response = self.client.get(reverse("all_tickets"))
 		self.assertContains(all_response, "Normal task")
 		self.assertContains(all_response, "Daily task")
+		self.assertContains(all_response, "Weekly task")
+		self.assertContains(all_response, "Monthly task")
 		self.assertContains(all_response, "0d old")
 
 	def test_todo_groups_tickets_by_priority(self):
