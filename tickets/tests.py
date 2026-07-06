@@ -48,6 +48,32 @@ class RecurringTicketSchedulingTests(TestCase):
 		scheduled_dates = list(Ticket.objects.filter(template=template).values_list("scheduled_for_date", flat=True).order_by("scheduled_for_date"))
 		self.assertEqual(scheduled_dates, [date(2026, 7, 4), date(2026, 7, 11)])
 
+	def test_recreate_daily_resets_and_respawns_daily_templates(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		template = TicketTemplate.objects.create(
+			title="Daily cleanup",
+			description="",
+			active=True,
+			frequency=RecurrenceFrequency.DAILY,
+			interval=1,
+			start_date=date(2026, 7, 1),
+			assignment_mode=AssignmentMode.FIXED,
+			fixed_assignee=user,
+		)
+		daily_tag = Tag.objects.create(name="Daily")
+		template.tags.add(daily_tag)
+
+		call_command("spawn_recurring_tickets", date="2026-07-01")
+		first_ticket = Ticket.objects.get(template=template)
+		self.assertEqual(first_ticket.scheduled_for_date, date(2026, 7, 1))
+
+		call_command("spawn_recurring_tickets", date="2026-07-01", recreate_daily=True)
+
+		tickets = list(Ticket.objects.filter(template=template).order_by("scheduled_for_date", "id"))
+		self.assertEqual([ticket.scheduled_for_date for ticket in tickets], [date(2026, 7, 1)])
+		template.refresh_from_db()
+		self.assertEqual(template.last_scheduled_for, date(2026, 7, 1))
+
 	def test_household_fairness_ignores_todo_completions(self):
 		user_one = User.objects.create_user(username="alice", password="pw")
 		user_two = User.objects.create_user(username="bob", password="pw")

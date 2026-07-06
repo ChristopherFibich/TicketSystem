@@ -45,6 +45,11 @@ class Command(BaseCommand):
         parser.add_argument("--date", dest="date", help="Run as if today is YYYY-MM-DD")
         parser.add_argument("--dry-run", action="store_true", help="Show what would happen without creating tickets")
         parser.add_argument("--max-per-template", type=int, default=90, help="Safety limit for catch-up spawning")
+        parser.add_argument(
+            "--recreate-daily",
+            action="store_true",
+            help="Delete existing tickets and reset anchors for templates tagged Daily before spawning once.",
+        )
 
     def handle(self, *args, **options):
         if options.get("date"):
@@ -54,6 +59,7 @@ class Command(BaseCommand):
 
         dry_run: bool = bool(options["dry_run"])
         max_per_template: int = int(options["max_per_template"])
+        recreate_daily: bool = bool(options["recreate_daily"])
 
         templates = TicketTemplate.objects.filter(active=True).order_by("id")
         if not templates.exists():
@@ -62,6 +68,15 @@ class Command(BaseCommand):
 
         created_count = 0
         for template in templates:
+            if recreate_daily and template.tags.filter(name__iexact="Daily").exists():
+                if not dry_run:
+                    Ticket.objects.filter(template=template).delete()
+                    template.last_scheduled_for = None
+                    template.last_completed_for = None
+                    template.save(update_fields=["last_scheduled_for", "last_completed_for", "updated_at"])
+                else:
+                    self.stdout.write(f"[{template.id}] {template.title}: DRY-RUN reset Daily template")
+
             created_count += self._spawn_for_template(
                 template,
                 today=today,
