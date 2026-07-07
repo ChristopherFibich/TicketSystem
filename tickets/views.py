@@ -275,6 +275,15 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 	ticket = get_object_or_404(Ticket.objects.select_related("assignee", "template").prefetch_related("checklist_items"), pk=pk)
 	existing_completion_user_ids = list(ticket.completions.values_list("completed_by_id", flat=True))
+	back_url_name = "todo_tickets"
+	if ticket.tags.filter(name__iexact="Daily").exists() or ticket.tags.filter(name__iexact="Weekly").exists() or ticket.tags.filter(name__iexact="Monthly").exists():
+		back_url_name = "haushalt_tickets"
+	elif ticket.template_id and ticket.template and (
+		ticket.template.tags.filter(name__iexact="Daily").exists()
+		or ticket.template.tags.filter(name__iexact="Weekly").exists()
+		or ticket.template.tags.filter(name__iexact="Monthly").exists()
+	):
+		back_url_name = "haushalt_tickets"
 
 	if request.method == "POST":
 		if "add_checklist_item" in request.POST:
@@ -363,6 +372,7 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 			"completions": completions,
 			"share_candidates": share_candidates,
 			"checklist_items": checklist_items,
+			"back_url_name": back_url_name,
 		},
 	)
 
