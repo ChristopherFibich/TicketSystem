@@ -735,17 +735,19 @@ def einkaufsliste(request: HttpRequest) -> HttpResponse:
 def scoreboard(request: HttpRequest) -> HttpResponse:
 	users = User.objects.all().order_by("username")
 	users_list = list(users)
+	household_completions = Completion.objects.exclude(ticket__tags__name__iexact="Todo")
+	todo_completions = Completion.objects.filter(ticket__tags__name__iexact="Todo")
 
 	totals = {
 		row["completed_by"]: row
-		for row in Completion.objects.values("completed_by")
+		for row in household_completions.values("completed_by")
 		.annotate(points=Sum("points_awarded"), avg_seconds=Avg("time_to_complete_seconds"))
 	}
 
 	since = timezone.now() - timedelta(days=30)
 	recent = {
 		row["completed_by"]: row
-		for row in Completion.objects.filter(completed_at__gte=since)
+		for row in household_completions.filter(completed_at__gte=since)
 		.values("completed_by")
 		.annotate(points=Sum("points_awarded"))
 	}
@@ -756,27 +758,27 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 
 	points_today = {
 		row["completed_by"]: int(row["points"] or 0)
-		for row in Completion.objects.filter(completed_at__date=today)
+		for row in household_completions.filter(completed_at__date=today)
 		.values("completed_by")
 		.annotate(points=Sum("points_awarded"))
 	}
 	points_7d = {
 		row["completed_by"]: int(row["points"] or 0)
-		for row in Completion.objects.filter(completed_at__gte=since_7d)
+		for row in household_completions.filter(completed_at__gte=since_7d)
 		.values("completed_by")
 		.annotate(points=Sum("points_awarded"))
 	}
 	points_30d = {
 		row["completed_by"]: int(row["points"] or 0)
-		for row in Completion.objects.filter(completed_at__gte=since_30d)
+		for row in household_completions.filter(completed_at__gte=since_30d)
 		.values("completed_by")
 		.annotate(points=Sum("points_awarded"))
 	}
 	todo_points = {
-		row["completed_by"]: int(row["points"] or 0)
-		for row in Completion.objects.filter(ticket__tags__name__iexact="Todo")
+		row["completed_by"]: int(row["count"] or 0)
+		for row in todo_completions
 		.values("completed_by")
-		.annotate(points=Sum("points_awarded"))
+		.annotate(count=Count("id"))
 	}
 
 	rows = []
@@ -840,7 +842,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	done_items_by_user_id: dict[int, list[dict]] = {r["user"].id: [] for r in rows}
 
 	for completion in (
-		Completion.objects.select_related("ticket", "completed_by").order_by("-completed_at").iterator()
+		household_completions.select_related("ticket", "completed_by").order_by("-completed_at").iterator()
 	):
 		user_id = completion.completed_by_id
 		items = done_items_by_user_id.get(user_id)
@@ -867,7 +869,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	month_order: list[object] = []
 
 	for row in (
-		Completion.objects.annotate(month=TruncMonth("completed_at"))
+		household_completions.annotate(month=TruncMonth("completed_at"))
 		.values("month", "completed_by")
 		.annotate(points=Sum("points_awarded"))
 		.order_by("-month")
@@ -906,7 +908,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 	tag_counts: dict[int, dict[int, int]] = {t.id: {} for t in tags}
 
 	for row in (
-		Completion.objects.filter(ticket__tags__isnull=False)
+		household_completions.filter(ticket__tags__isnull=False)
 		.values("ticket__tags", "completed_by")
 		.annotate(count=Count("id"))
 	):
@@ -943,7 +945,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		labels = [(start_day + timedelta(days=i)).isoformat() for i in range((end_day - start_day).days + 1)]
 		counts: dict[tuple[int, str], int] = {}
 		for row in (
-			Completion.objects.filter(completed_at__date__gte=start_day, completed_at__date__lte=end_day)
+			household_completions.filter(completed_at__date__gte=start_day, completed_at__date__lte=end_day)
 			.annotate(day=TruncDate("completed_at"))
 			.values("day", "completed_by")
 			.annotate(c=Count("id"))
@@ -970,7 +972,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		max_week: date | None = None
 
 		for row in (
-			Completion.objects.annotate(week=TruncWeek("completed_at"))
+			household_completions.annotate(week=TruncWeek("completed_at"))
 			.values("week", "completed_by")
 			.annotate(c=Count("id"))
 			.order_by("week")
