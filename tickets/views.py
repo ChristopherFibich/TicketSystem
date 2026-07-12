@@ -229,6 +229,7 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 	def _initial_from_template(tpl: TicketTemplate | None):
 		initial = {"assignee": request.user, "status": TicketStatus.NEW}
 		initial["priority"] = TicketPriority.MED
+		initial["counts_for_score"] = False
 		if tpl:
 			initial.update(
 				{
@@ -771,6 +772,12 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		.values("completed_by")
 		.annotate(points=Sum("points_awarded"))
 	}
+	todo_points = {
+		row["completed_by"]: int(row["points"] or 0)
+		for row in Completion.objects.filter(ticket__tags__name__iexact="Todo")
+		.values("completed_by")
+		.annotate(points=Sum("points_awarded"))
+	}
 
 	rows = []
 	for user in users_list:
@@ -788,6 +795,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 				"points_today": p_today,
 				"points_7d": p_7d,
 				"points_30d_window": p_30d,
+				"todo_points": todo_points.get(user.id, 0),
 				"done_items": [],
 			}
 		)

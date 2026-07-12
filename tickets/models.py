@@ -123,7 +123,7 @@ class Ticket(models.Model):
 	priority = models.CharField(max_length=10, choices=TicketPriority.choices, default=TicketPriority.MED)
 
 	counts_for_score = models.BooleanField(
-		default=True,
+		default=False,
 		help_text="If unchecked, completing this ticket awards 0 points and doesn't affect scoring.",
 	)
 

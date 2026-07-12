@@ -235,6 +235,18 @@
     </div>
   {% endif %}
 
+  <div class="card card-body mt-4">
+    <div class="fw-semibold mb-2">TODO points</div>
+    <div class="list-group list-group-flush">
+      {% for r in rows %}
+        <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+          <span>{{ r.user.username }}</span>
+          <span class="badge text-bg-secondary rounded-pill">{{ r.todo_points }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" crossorigin="anonymous"></script>
   <script>
     (function () {
