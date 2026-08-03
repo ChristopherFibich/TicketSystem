@@ -102,6 +102,25 @@ class TicketTemplateEligibility(models.Model):
 		return f"{self.template} -> {self.user} (w={self.weight})"
 
 
+class UserAvailability(models.Model):
+	user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="availability")
+	is_absent = models.BooleanField(default=False)
+	updated_at = models.DateTimeField(auto_now=True)
+	updated_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="availability_updates",
+	)
+
+	class Meta:
+		ordering = ["user__username", "user_id"]
+
+	def __str__(self) -> str:
+		return f"{self.user}: {'absent' if self.is_absent else 'present'}"
+
+
 class Tag(models.Model):
 	name = models.CharField(max_length=50, unique=True)
 	created_at = models.DateTimeField(auto_now_add=True)

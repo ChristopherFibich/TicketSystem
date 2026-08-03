@@ -17,6 +17,17 @@
         <div class="d-flex align-items-center ms-auto gap-2">
           {% if user.is_authenticated %}
             <span class="navbar-text small text-body-secondary">{{ user.username }}</span>
+            <form method="post" action="{% url 'abwesend_toggle' %}" class="m-0">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button
+                class="btn btn-sm {% if is_abwesend %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+                type="submit"
+                aria-pressed="{% if is_abwesend %}true{% else %}false{% endif %}"
+              >
+                abwesend
+              </button>
+            </form>
           {% endif %}
 
           <button

@@ -10,6 +10,7 @@ from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import TicketCreateForm, TicketUpdateForm
 from .access import can_view_graphs
@@ -31,10 +32,17 @@ from .models import (
 	TicketPriority,
 	TicketTemplate,
 	TicketStatus,
+	UserAvailability,
 	WeightEntry,
 )
 
 AuthUser = get_user_model()
+
+
+def _is_user_absent(user) -> bool:
+	if not user.is_authenticated:
+		return False
+	return UserAvailability.objects.filter(user=user, is_absent=True).exists()
 
 
 def _default_ticket_card_style() -> dict[str, str]:
@@ -482,6 +490,22 @@ def _ticket_list_view(request: HttpRequest, *, include_daily: bool, title: str, 
 @login_required
 def help_page(request: HttpRequest) -> HttpResponse:
 	return render(request, "tickets/help.html")
+
+
+@login_required
+def abwesend_toggle(request: HttpRequest) -> HttpResponse:
+	if request.method != "POST":
+		return redirect("dashboard")
+
+	availability, _ = UserAvailability.objects.get_or_create(user=request.user)
+	availability.is_absent = not bool(availability.is_absent)
+	availability.updated_by = request.user
+	availability.save(update_fields=["is_absent", "updated_by", "updated_at"])
+
+	next_url = (request.POST.get("next") or "").strip()
+	if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+		next_url = ""
+	return redirect(next_url or "dashboard")
 
 
 @login_required

@@ -14,6 +14,7 @@ from tickets.models import (
     Ticket,
     TicketStatus,
     TicketTemplate,
+    UserAvailability,
 )
 from tickets.scheduling import next_scheduled_for
 
@@ -29,8 +30,15 @@ def choose_assignee(template: TicketTemplate) -> User | None:
     if template.assignment_mode == AssignmentMode.FIXED:
         return template.fixed_assignee
 
+    absent_user_ids = set(UserAvailability.objects.filter(is_absent=True).values_list("user_id", flat=True))
     elig = list(template.eligibilities.select_related("user"))
-    candidates = [Candidate(e.user, max(1, int(e.weight))) for e in elig]
+    candidates = [Candidate(e.user, max(1, int(e.weight))) for e in elig if e.user.is_active and e.user_id not in absent_user_ids]
+    if not elig:
+        from django.contrib.auth import get_user_model
+
+        UserModel = get_user_model()
+        users = UserModel.objects.filter(is_active=True).exclude(id__in=absent_user_ids)
+        candidates = [Candidate(u, 1) for u in users]
     if not candidates:
         return None
 
@@ -122,7 +130,8 @@ class Command(BaseCommand):
         if template.assignment_mode == AssignmentMode.FIXED and assignee is None:
             raise CommandError(f"Template '{template}' is FIXED but has no fixed_assignee")
         if template.assignment_mode == AssignmentMode.POOL and assignee is None:
-            raise CommandError(f"Template '{template}' has no eligible users")
+            self.stdout.write(f"[{template.id}] {template.title}: no available pool users (all absent?); skipping")
+            return 0
 
         msg = f"[{template.id}] {template.title}: create ticket for {next_date} -> {assignee}"
         if dry_run:

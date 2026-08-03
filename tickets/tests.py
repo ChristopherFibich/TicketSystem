@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from .admin import TicketTemplateAdmin
 from .forms import TicketUpdateForm
-from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate
+from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserAvailability
 
 
 User = get_user_model()
@@ -130,6 +130,28 @@ class RecurringTicketSchedulingTests(TestCase):
 		spawned = Ticket.objects.get(template=pool_template, scheduled_for_date=date(2026, 7, 7))
 		self.assertEqual(spawned.assignee, user_two)
 
+	def test_pool_assignment_skips_absent_users(self):
+		present = User.objects.create_user(username="alice", password="pw")
+		absent = User.objects.create_user(username="bob", password="pw")
+		UserAvailability.objects.create(user=absent, is_absent=True)
+		template = TicketTemplate.objects.create(
+			title="Pool task",
+			description="",
+			active=True,
+			frequency=RecurrenceFrequency.DAILY,
+			interval=1,
+			start_date=date(2026, 7, 1),
+			assignment_mode=AssignmentMode.POOL,
+			points=1,
+		)
+		template.eligibilities.create(user=present, weight=1)
+		template.eligibilities.create(user=absent, weight=1)
+
+		call_command("spawn_recurring_tickets", date="2026-07-01")
+
+		ticket = Ticket.objects.get(template=template)
+		self.assertEqual(ticket.assignee, present)
+
 
 class TicketTemplateAdminDefaultsTests(TestCase):
 	def test_pool_add_form_defaults_to_all_active_users(self):
@@ -181,6 +203,27 @@ class GraphsAccessTests(TestCase):
 		response = self.client.get(reverse("dashboard"))
 
 		self.assertContains(response, reverse("graphs"))
+
+
+class AbwesendToggleTests(TestCase):
+	def test_abwesend_toggle_flips_presence_and_exposes_context(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("dashboard"))
+		self.assertFalse(response.context["is_abwesend"])
+		self.assertContains(response, "abwesend")
+
+		response = self.client.post(reverse("abwesend_toggle"), {"next": reverse("dashboard")})
+		self.assertRedirects(response, reverse("dashboard"))
+		self.assertTrue(UserAvailability.objects.get(user=user).is_absent)
+
+		response = self.client.get(reverse("dashboard"))
+		self.assertTrue(response.context["is_abwesend"])
+
+		response = self.client.post(reverse("abwesend_toggle"), {"next": reverse("dashboard")})
+		self.assertRedirects(response, reverse("dashboard"))
+		self.assertFalse(UserAvailability.objects.get(user=user).is_absent)
 
 
 class HaushaltTicketsViewTests(TestCase):
