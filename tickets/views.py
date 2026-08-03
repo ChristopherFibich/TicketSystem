@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
+from django.db import OperationalError, ProgrammingError
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
@@ -504,7 +505,10 @@ def abwesend_toggle(request: HttpRequest) -> HttpResponse:
 	availability.updated_by = request.user
 	availability.save(update_fields=["is_absent", "updated_by", "updated_at"])
 	if availability.is_absent:
-		UserAvailabilityEvent.objects.create(user=request.user, day=today, created_by=request.user)
+		try:
+			UserAvailabilityEvent.objects.create(user=request.user, day=today, created_by=request.user)
+		except (OperationalError, ProgrammingError):
+			pass
 
 	next_url = (request.POST.get("next") or "").strip()
 	if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
@@ -1038,11 +1042,15 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		start_day = end_day - timedelta(days=max(1, days) - 1)
 		labels = [(start_day + timedelta(days=i)).isoformat() for i in range((end_day - start_day).days + 1)]
 		counts: dict[tuple[int, str], int] = {}
-		for row in (
-			absent_events.filter(day__gte=start_day, day__lte=end_day)
-			.values("day", "user")
-			.annotate(c=Count("id"))
-		):
+		try:
+			rows = list(
+				absent_events.filter(day__gte=start_day, day__lte=end_day)
+				.values("day", "user")
+				.annotate(c=Count("id"))
+			)
+		except (OperationalError, ProgrammingError):
+			rows = []
+		for row in rows:
 			day = row["day"]
 			if not day:
 				continue
