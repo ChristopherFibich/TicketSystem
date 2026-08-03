@@ -21,7 +21,7 @@
               {% csrf_token %}
               <input type="hidden" name="next" value="{{ request.get_full_path }}">
               <button
-                class="btn btn-sm {% if is_abwesend %}btn-danger{% else %}btn-outline-secondary{% endif %}"
+                class="btn btn-sm {% if is_abwesend %}btn-warning text-dark{% else %}btn-outline-secondary{% endif %}"
                 type="submit"
                 aria-pressed="{% if is_abwesend %}true{% else %}false{% endif %}"
               >
