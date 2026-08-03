@@ -121,6 +121,25 @@ class UserAvailability(models.Model):
 		return f"{self.user}: {'absent' if self.is_absent else 'present'}"
 
 
+class UserAvailabilityEvent(models.Model):
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="availability_events")
+	day = models.DateField(db_index=True, default=timezone.localdate)
+	created_at = models.DateTimeField(auto_now_add=True)
+	created_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		null=True,
+		blank=True,
+		on_delete=models.SET_NULL,
+		related_name="availability_event_creations",
+	)
+
+	class Meta:
+		ordering = ["-day", "-created_at", "-id"]
+
+	def __str__(self) -> str:
+		return f"{self.day} {self.user}"
+
+
 class Tag(models.Model):
 	name = models.CharField(max_length=50, unique=True)
 	created_at = models.DateTimeField(auto_now_add=True)

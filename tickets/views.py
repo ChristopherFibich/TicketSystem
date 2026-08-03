@@ -33,6 +33,7 @@ from .models import (
 	TicketTemplate,
 	TicketStatus,
 	UserAvailability,
+	UserAvailabilityEvent,
 	WeightEntry,
 )
 
@@ -497,10 +498,13 @@ def abwesend_toggle(request: HttpRequest) -> HttpResponse:
 	if request.method != "POST":
 		return redirect("dashboard")
 
+	today = timezone.localdate()
 	availability, _ = UserAvailability.objects.get_or_create(user=request.user)
 	availability.is_absent = not bool(availability.is_absent)
 	availability.updated_by = request.user
 	availability.save(update_fields=["is_absent", "updated_by", "updated_at"])
+	if availability.is_absent:
+		UserAvailabilityEvent.objects.create(user=request.user, day=today, created_by=request.user)
 
 	next_url = (request.POST.get("next") or "").strip()
 	if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
@@ -804,6 +808,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		.values("completed_by")
 		.annotate(count=Count("id"))
 	}
+	absent_events = UserAvailabilityEvent.objects.all()
 
 	rows = []
 	for user in users_list:
@@ -1028,10 +1033,40 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			)
 		return {"labels": labels, "series": series}
 
+	def _absent_graph(days: int):
+		end_day = timezone.localdate()
+		start_day = end_day - timedelta(days=max(1, days) - 1)
+		labels = [(start_day + timedelta(days=i)).isoformat() for i in range((end_day - start_day).days + 1)]
+		counts: dict[tuple[int, str], int] = {}
+		for row in (
+			absent_events.filter(day__gte=start_day, day__lte=end_day)
+			.values("day", "user")
+			.annotate(c=Count("id"))
+		):
+			day = row["day"]
+			if not day:
+				continue
+			counts[(int(row["user"]), day.isoformat())] = int(row["c"] or 0)
+
+		series = []
+		for u in users_list:
+			series.append(
+				{
+					"label": u.username,
+					"data": [counts.get((u.id, d), 0) for d in labels],
+				}
+			)
+		return {"labels": labels, "series": series}
+
 	scoreboard_graph = {
 		"week": _daily_graph(7),
 		"month": _daily_graph(30),
 		"all": _weekly_graph_all_time(),
+	}
+	absent_graph = {
+		"week": _absent_graph(7),
+		"month": _absent_graph(30),
+		"all": _absent_graph(30),
 	}
 
 	return render(
@@ -1044,5 +1079,6 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			"months_won": months_won,
 			"tag_stats": tag_stats,
 			"scoreboard_graph_json": json.dumps(scoreboard_graph),
+			"abwesend_graph_json": json.dumps(absent_graph),
 		},
 	)

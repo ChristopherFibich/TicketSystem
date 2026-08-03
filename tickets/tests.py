@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from .admin import TicketTemplateAdmin
 from .forms import TicketUpdateForm
-from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserAvailability
+from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserAvailability, UserAvailabilityEvent
 
 
 User = get_user_model()
@@ -224,6 +224,14 @@ class AbwesendToggleTests(TestCase):
 		response = self.client.post(reverse("abwesend_toggle"), {"next": reverse("dashboard")})
 		self.assertRedirects(response, reverse("dashboard"))
 		self.assertFalse(UserAvailability.objects.get(user=user).is_absent)
+
+	def test_abwesend_toggle_logs_on_events(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		self.client.post(reverse("abwesend_toggle"), {"next": reverse("dashboard")})
+
+		self.assertEqual(UserAvailabilityEvent.objects.filter(user=user).count(), 1)
 
 
 class HaushaltTicketsViewTests(TestCase):

@@ -45,6 +45,12 @@
       <div class="scoreboard-chart-container">
         <canvas id="scoreboardChart"></canvas>
       </div>
+      <div class="mt-4">
+        <div class="fw-semibold mb-2">Abwesend</div>
+        <div class="scoreboard-chart-container" style="height: 160px;">
+          <canvas id="abwesendChart"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -251,9 +257,11 @@
   <script>
     (function () {
       const graphData = {{ scoreboard_graph_json|default:'{}'|safe }};
+      const absentGraphData = {{ abwesend_graph_json|default:'{}'|safe }};
       const collapseEl = document.getElementById('scoreboardGraph');
       const canvas = document.getElementById('scoreboardChart');
-      if (!collapseEl || !canvas) return;
+      const absentCanvas = document.getElementById('abwesendChart');
+      if (!collapseEl || !canvas || !absentCanvas) return;
 
       const rootStyle = getComputedStyle(document.documentElement);
       const colorVars = ['--bs-primary', '--bs-success', '--bs-danger', '--bs-warning', '--bs-info', '--bs-secondary'];
@@ -286,10 +294,49 @@
         });
       };
 
+      const buildBarDatasets = (series) => {
+        return (series || []).map((s, idx) => {
+          const color = pickColor(idx);
+          return {
+            label: s.label,
+            data: s.data,
+            borderWidth: 1,
+            borderColor: color,
+            backgroundColor: color,
+            maxBarThickness: 24,
+          };
+        });
+      };
+
+      const drawALabels = {
+        id: 'drawALabels',
+        afterDatasetsDraw(chart) {
+          if (chart.config.type !== 'bar') return;
+          const { ctx } = chart;
+          ctx.save();
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '700 12px system-ui, sans-serif';
+
+          chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            meta.data.forEach((bar, index) => {
+              const value = Array.isArray(dataset.data) ? Number(dataset.data[index] || 0) : 0;
+              if (value <= 0) return;
+              ctx.fillText('A', bar.x, (bar.y + bar.base) / 2);
+            });
+          });
+
+          ctx.restore();
+        },
+      };
+
       const getRangePayload = (range) => graphData[range] || { labels: [], series: [] };
 
       let currentRange = 'week';
       const initial = getRangePayload(currentRange);
+      const initialAbsent = absentGraphData[currentRange] || { labels: [], series: [] };
 
       const chart = new Chart(canvas, {
         type: 'line',
@@ -332,12 +379,60 @@
         }
       });
 
+      const absentChart = new Chart(absentCanvas, {
+        type: 'bar',
+        data: {
+          labels: initialAbsent.labels || [],
+          datasets: buildBarDatasets(initialAbsent.series),
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true },
+            tooltip: {
+              callbacks: {
+                title: (items) => {
+                  if (!items || items.length === 0) return '';
+                  const label = items[0].label;
+                  return formatMonthDay(label);
+                }
+              }
+            },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: 'Time' },
+              ticks: {
+                callback: function (value) {
+                  const raw = this.getLabelForValue(value);
+                  if (!raw) return value;
+                  return formatMonthDay(raw);
+                },
+              }
+            },
+            y: {
+              beginAtZero: true,
+              suggestedMax: 1,
+              ticks: { precision: 0, stepSize: 1 },
+              title: { display: true, text: 'Abwesend' },
+            },
+          },
+        },
+        plugins: [drawALabels],
+      });
+
       const setRange = (range) => {
         currentRange = range;
         const payload = getRangePayload(range);
+        const absentPayload = absentGraphData[range] || { labels: [], series: [] };
         chart.data.labels = payload.labels || [];
         chart.data.datasets = buildDatasets(payload.series);
         chart.update();
+
+        absentChart.data.labels = absentPayload.labels || [];
+        absentChart.data.datasets = buildBarDatasets(absentPayload.series);
+        absentChart.update();
 
         document.querySelectorAll('[data-range]').forEach(btn => {
           btn.classList.toggle('active', btn.getAttribute('data-range') === range);
@@ -350,6 +445,7 @@
 
       collapseEl.addEventListener('shown.bs.collapse', () => {
         chart.resize();
+        absentChart.resize();
       });
 
       // Ensure default state
