@@ -500,7 +500,20 @@ def abwesend_toggle(request: HttpRequest) -> HttpResponse:
 		return redirect("dashboard")
 
 	today = timezone.localdate()
-	availability, _ = UserAvailability.objects.get_or_create(user=request.user)
+	try:
+		availability, _ = UserAvailability.objects.get_or_create(user=request.user)
+	except (OperationalError, ProgrammingError):
+		availability = None
+		availability_is_absent = False
+	else:
+		availability_is_absent = bool(availability.is_absent)
+
+	if availability is None:
+		next_url = (request.POST.get("next") or "").strip()
+		if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+			next_url = ""
+		return redirect(next_url or "dashboard")
+
 	availability.is_absent = not bool(availability.is_absent)
 	availability.updated_by = request.user
 	availability.save(update_fields=["is_absent", "updated_by", "updated_at"])
