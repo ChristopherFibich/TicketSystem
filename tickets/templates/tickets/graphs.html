@@ -75,6 +75,7 @@
         const day = d.getUTCDate();
         return `${m}-${day}`;
       };
+      const formatTimestamp = (timestamp) => formatMonthDay(new Date(Number(timestamp)).toISOString().slice(0, 10));
       const addDaysISO = (isoDate, days) => {
         const d = parseISODateUTC(isoDate);
         const ms = d.getTime() + days * 24 * 60 * 60 * 1000;
@@ -130,6 +131,11 @@
         return { extendedLabels, weightExtended, trendData, slope, intercept };
       };
 
+      const toChartPoints = (labels, values) => values.map((value, index) => ({
+        x: parseISODateUTC(labels[index]).getTime(),
+        y: value,
+      }));
+
       let currentRange = 'week';
       let currentStats = null;
       let baseLabels = [];
@@ -143,16 +149,16 @@
       const chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: currentStats.extendedLabels,
+          labels: [],
           datasets: [{
             label: 'Weight (kg)',
-            data: currentStats.weightExtended,
+            data: toChartPoints(currentStats.extendedLabels, currentStats.weightExtended),
             borderWidth: 2,
             tension: 0.2,
             pointRadius: 3,
           }, {
             label: 'Trend (kg)',
-            data: currentStats.trendData,
+            data: toChartPoints(currentStats.extendedLabels, currentStats.trendData),
             borderWidth: 2,
             borderDash: [6, 6],
             pointRadius: 0,
@@ -170,22 +176,18 @@
               callbacks: {
                 title: (items) => {
                   if (!items || items.length === 0) return '';
-                  const label = items[0].label;
-                  return formatMonthDay(label);
+                  return formatTimestamp(items[0].parsed.x);
                 }
               }
             },
           },
           scales: {
             x: {
-              type: 'category',
+              type: 'linear',
               title: { display: true, text: 'Time', font: { size: 15, weight: 'bold' } },
               ticks: {
                 font: { size: 13 },
-                callback: (value, index) => {
-                  const raw = currentStats.extendedLabels[index];
-                  return raw ? formatMonthDay(raw) : value;
-                }
+                callback: (value) => formatTimestamp(value),
               }
             },
             y: {
@@ -245,9 +247,8 @@
         baseData = payload.data || [];
         currentStats = buildSeries(baseLabels, baseData);
 
-        chart.data.labels = currentStats.extendedLabels;
-        chart.data.datasets[0].data = currentStats.weightExtended;
-        chart.data.datasets[1].data = currentStats.trendData;
+        chart.data.datasets[0].data = toChartPoints(currentStats.extendedLabels, currentStats.weightExtended);
+        chart.data.datasets[1].data = toChartPoints(currentStats.extendedLabels, currentStats.trendData);
         chart.update();
 
         document.querySelectorAll('[data-range]').forEach(btn => {
