@@ -219,6 +219,40 @@ class ScoreboardGraphTests(TestCase):
 		self.assertContains(response, "Show cumulative score")
 
 
+class TicketCreateFlowTests(TestCase):
+	def test_load_template_creates_ticket_immediately(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		template = TicketTemplate.objects.create(
+			title="Kitchen cleanup",
+			description="Wipe the counters",
+			active=True,
+			frequency=RecurrenceFrequency.DAILY,
+			interval=1,
+			start_date=date(2026, 7, 1),
+			assignment_mode=AssignmentMode.FIXED,
+			fixed_assignee=user,
+			points=3,
+			counts_for_score=True,
+		)
+		tag = Tag.objects.create(name="Daily")
+		template.tags.add(tag)
+
+		response = self.client.post(
+			reverse("ticket_create"),
+			{"template": template.id, "load_template": "1"},
+			follow=False,
+		)
+
+		ticket = Ticket.objects.filter(template=template).order_by("-created_at").first()
+		self.assertIsNotNone(ticket)
+		self.assertEqual(ticket.assignee, user)
+		self.assertEqual(ticket.title, template.title)
+		self.assertEqual(ticket.description, template.description)
+		self.assertEqual(ticket.tags.count(), 1)
+		self.assertRedirects(response, reverse("ticket_detail", kwargs={"pk": ticket.pk}))
+
+
 class AbwesendToggleTests(TestCase):
 	def test_abwesend_toggle_flips_presence_and_exposes_context(self):
 		user = User.objects.create_user(username="alice", password="pw")

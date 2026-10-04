@@ -261,7 +261,40 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 			tpl = None
 			if template_id.isdigit():
 				tpl = TicketTemplate.objects.filter(active=True, id=int(template_id)).first()
-			form = TicketCreateForm(initial=_initial_from_template(tpl))
+			if tpl is None:
+				form = TicketCreateForm(request.POST)
+				return render(request, "tickets/ticket_form.html", {"form": form, "mode": "create"})
+
+			post_data = request.POST.copy()
+			defaults = _initial_from_template(tpl)
+			for field_name, value in defaults.items():
+				if field_name == "tags":
+					if not post_data.getlist("tags") and value:
+						post_data.setlist("tags", [str(v) for v in value])
+					continue
+				if field_name == "counts_for_score":
+					if "counts_for_score" not in post_data:
+						post_data["counts_for_score"] = "on" if value else ""
+					continue
+				if field_name in {"template", "assignee", "status", "priority"}:
+					if not post_data.get(field_name):
+						post_data[field_name] = value
+					continue
+				if field_name in {"title", "description"} and not post_data.get(field_name, "").strip():
+					post_data[field_name] = value
+
+			form = TicketCreateForm(post_data)
+			if form.is_valid():
+				ticket = form.save(commit=False)
+				ticket.created_by = request.user
+				ticket.template = tpl
+				if ticket.assignee_id is None:
+					ticket.assignee = request.user
+				ticket.save()
+				form.save_m2m()
+				if ticket.template_id and ticket.tags.count() == 0:
+					ticket.tags.set(ticket.template.tags.all())
+				return redirect("ticket_detail", pk=ticket.pk)
 			return render(request, "tickets/ticket_form.html", {"form": form, "mode": "create"})
 
 		form = TicketCreateForm(request.POST)
