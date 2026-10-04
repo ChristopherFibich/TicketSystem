@@ -273,13 +273,22 @@ class AbwesendToggleTests(TestCase):
 		self.assertRedirects(response, reverse("dashboard"))
 		self.assertFalse(UserAvailability.objects.get(user=user).is_absent)
 
-	def test_abwesend_toggle_logs_on_events(self):
+	def test_abwesend_toggle_logs_on_and_off_events(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)
 
 		self.client.post(reverse("abwesend_toggle"), {"next": reverse("dashboard")})
+		self.client.post(reverse("abwesend_toggle"), {"next": reverse("dashboard")})
 
-		self.assertEqual(UserAvailabilityEvent.objects.filter(user=user).count(), 1)
+		self.assertEqual(UserAvailabilityEvent.objects.filter(user=user).count(), 2)
+		self.assertTrue(UserAvailabilityEvent.objects.filter(user=user, is_absent=True).exists())
+		self.assertTrue(UserAvailabilityEvent.objects.filter(user=user, is_absent=False).exists())
+
+		response = self.client.get(reverse("scoreboard"))
+		self.assertEqual(response.status_code, 200)
+		payload = json.loads(response.context["abwesend_graph_json"])
+		self.assertIn("week", payload)
+		self.assertTrue(any(sum(series["data"]) > 0 for series in payload["week"]["series"]))
 
 
 class HaushaltTicketsViewTests(TestCase):
