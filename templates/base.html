@@ -49,6 +49,7 @@
             {% if user.is_authenticated %}
               <li class="nav-item"><a class="nav-link" href="{% url 'haushalt_tickets' %}">Haushalt</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'todo_tickets' %}">Todo</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'ticket_templates' %}">Templates</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'all_tickets' %}">All tickets</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
               {% if can_view_graphs %}

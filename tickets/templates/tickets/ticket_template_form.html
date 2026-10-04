@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}Create Template{% endblock %}
+{% block title %}{% if is_edit %}Edit Template{% else %}Create Template{% endif %}{% endblock %}
 
 {% block content %}
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <h1 class="h4 m-0">Create Template</h1>
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'haushalt_tickets' %}">Cancel</a>
+    <h1 class="h4 m-0">{% if is_edit %}Edit Template{% else %}Create Template{% endif %}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% if is_edit %}{% url 'ticket_templates' %}{% else %}{% url 'haushalt_tickets' %}{% endif %}">Cancel</a>
   </div>
 
   <form method="post" class="card card-body">
@@ -106,8 +106,8 @@
     </div>
 
     <div class="d-flex flex-wrap gap-2">
-      <button class="btn btn-primary" type="submit">Create Template</button>
-      <a class="btn btn-outline-secondary" href="{% url 'haushalt_tickets' %}">Cancel</a>
+      <button class="btn btn-primary" type="submit">{% if is_edit %}Save Template{% else %}Create Template{% endif %}</button>
+      <a class="btn btn-outline-secondary" href="{% if is_edit %}{% url 'ticket_templates' %}{% else %}{% url 'haushalt_tickets' %}{% endif %}">Cancel</a>
     </div>
   </form>
 {% endblock %}

@@ -231,27 +231,56 @@ def haushalt_tickets(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
+def ticket_templates(request: HttpRequest) -> HttpResponse:
+	templates = TicketTemplate.objects.prefetch_related("eligibilities__user", "tags").order_by("title")
+	return render(request, "tickets/ticket_templates.html", {"templates": templates})
+
+
+def _save_template_eligibilities(template: TicketTemplate, eligible_users) -> None:
+	TicketTemplateEligibility.objects.filter(template=template).delete()
+	if template.assignment_mode != AssignmentMode.POOL:
+		return
+
+	users = list(eligible_users)
+	if not users:
+		users = list(AuthUser.objects.filter(is_active=True).only("id"))
+	TicketTemplateEligibility.objects.bulk_create(
+		[TicketTemplateEligibility(template=template, user=user, weight=1) for user in users]
+	)
+
+
+@login_required
 def ticket_template_create(request: HttpRequest) -> HttpResponse:
 	if request.method == "POST":
 		form = TicketTemplateForm(request.POST)
 		if form.is_valid():
 			with transaction.atomic():
 				template = form.save()
-				if template.assignment_mode == AssignmentMode.POOL:
-					eligible_users = list(form.cleaned_data["eligible_users"])
-					if not eligible_users:
-						eligible_users = list(AuthUser.objects.filter(is_active=True).only("id"))
-					TicketTemplateEligibility.objects.bulk_create(
-						[
-							TicketTemplateEligibility(template=template, user=user, weight=1)
-							for user in eligible_users
-						]
-					)
+				_save_template_eligibilities(template, form.cleaned_data["eligible_users"])
 			return redirect("haushalt_tickets")
 	else:
 		form = TicketTemplateForm(initial={"active": True, "interval": 1, "points": 1, "counts_for_score": True})
 
-	return render(request, "tickets/ticket_template_form.html", {"form": form})
+	return render(request, "tickets/ticket_template_form.html", {"form": form, "is_edit": False})
+
+
+@login_required
+def ticket_template_edit(request: HttpRequest, pk: int) -> HttpResponse:
+	template = get_object_or_404(TicketTemplate, pk=pk)
+	if request.method == "POST":
+		form = TicketTemplateForm(request.POST, instance=template)
+		if form.is_valid():
+			with transaction.atomic():
+				template = form.save()
+				_save_template_eligibilities(template, form.cleaned_data["eligible_users"])
+			return redirect("ticket_templates")
+	else:
+		form = TicketTemplateForm(
+			instance=template,
+			initial={"eligible_users": template.eligibilities.values_list("user_id", flat=True)},
+		)
+
+	return render(request, "tickets/ticket_template_form.html", {"form": form, "is_edit": True, "template": template})
 
 
 @login_required

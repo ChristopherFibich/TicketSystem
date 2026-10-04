@@ -361,6 +361,41 @@ class HaushaltTicketsViewTests(TestCase):
 		self.assertRedirects(response, reverse("haushalt_tickets"))
 		self.assertCountEqual(template.eligibilities.values_list("user_id", flat=True), [selected.id, other.id])
 
+	def test_templates_page_lists_and_edits_template(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		template = TicketTemplate.objects.create(
+			title="Original title",
+			description="Original description",
+			frequency=RecurrenceFrequency.DAILY,
+			interval=1,
+			start_date=date(2026, 10, 4),
+			assignment_mode=AssignmentMode.POOL,
+		)
+		template.eligibilities.create(user=user)
+
+		response = self.client.get(reverse("ticket_templates"))
+		self.assertContains(response, "Original title")
+
+		response = self.client.post(
+			reverse("ticket_template_edit", kwargs={"pk": template.pk}),
+			{
+				"title": "Updated title",
+				"description": "Updated description",
+				"active": "on",
+				"frequency": RecurrenceFrequency.DAILY,
+				"interval": 1,
+				"start_date": "2026-10-04",
+				"assignment_mode": AssignmentMode.POOL,
+				"points": 1,
+				"eligible_users": [user.id],
+			},
+		)
+
+		template.refresh_from_db()
+		self.assertRedirects(response, reverse("ticket_templates"))
+		self.assertEqual(template.title, "Updated title")
+
 	def test_haushalt_view_shows_daily_weekly_and_monthly_tagged_tickets(self):
 		alice = User.objects.create_user(username="alice", password="pw")
 		bob = User.objects.create_user(username="bob", password="pw")
