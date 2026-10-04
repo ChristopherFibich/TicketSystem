@@ -132,7 +132,7 @@ def _ticket_bg_class(ticket: Ticket, now) -> str:
 
 def home(request: HttpRequest) -> HttpResponse:
 	if request.user.is_authenticated:
-		return redirect("dashboard")
+		return redirect("haushalt_tickets")
 	return redirect("login")
 
 
