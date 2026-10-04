@@ -9,6 +9,12 @@
     {% csrf_token %}
     {{ form.non_field_errors }}
 
+    <div class="d-flex flex-wrap gap-2 mb-3">
+      <button class="btn btn-primary" type="submit">Create</button>
+      <button class="btn btn-outline-secondary" type="submit" name="load_template" value="1" formnovalidate>Load</button>
+      <a class="btn btn-outline-secondary" href="{% url 'todo_tickets' %}">Cancel</a>
+    </div>
+
     <div class="mb-3">
       <label class="form-label" for="id_template">Template</label>
       {{ form.template }}
@@ -60,10 +66,5 @@
       <div class="form-text">Hold Ctrl/Cmd to select multiple.</div>
     </div>
 
-    <div class="d-flex gap-2">
-      <button class="btn btn-primary" type="submit">Create</button>
-      <button class="btn btn-outline-secondary" type="submit" name="load_template" value="1" formnovalidate>Load</button>
-      <a class="btn btn-outline-secondary" href="{% url 'todo_tickets' %}">Cancel</a>
-    </div>
   </form>
 {% endblock %}
