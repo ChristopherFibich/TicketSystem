@@ -88,7 +88,9 @@
     </main>
 
     <div id="activeUsersWarning" class="alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3 shadow-sm" style="display: {% if active_users %}block{% else %}none{% endif %}; z-index: 1080;" role="status">
-      ⚠️ <span id="activeUsersWarningText">{% if active_users %}{{ active_users|join:", " }} {% if active_users|length == 1 %}is{% else %}are{% endif %} currently active.{% endif %}</span>
+      <span aria-hidden="true">⚠️</span>
+      <span id="activeUsersWarningText">{% if active_users %}{{ active_users|join:", " }} {% if active_users|length == 1 %}is{% else %}are{% endif %} currently active.{% endif %}</span>
+      <button id="activeUsersWarningDismiss" type="button" class="btn-close float-end ms-3" aria-label="Dismiss active user warning"></button>
     </div>
 
     <script
@@ -101,8 +103,10 @@
         (function () {
           const warning = document.getElementById('activeUsersWarning');
           const warningText = document.getElementById('activeUsersWarningText');
+          const dismissButton = document.getElementById('activeUsersWarningDismiss');
           const heartbeatUrl = '{% url "activity_heartbeat" %}';
           const csrfToken = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))?.split('=')[1];
+          let warningDismissed = false;
 
           const updateWarning = (activeUsers) => {
             if (!activeUsers || activeUsers.length === 0) {
@@ -110,9 +114,16 @@
               return;
             }
             const verb = activeUsers.length === 1 ? 'is' : 'are';
-            warningText.textContent = `${activeUsers.join(', ')} ${verb} currently active.`;
+            warningText.textContent = warningDismissed ? '' : `${activeUsers.join(', ')} ${verb} currently active.`;
+            dismissButton.style.display = warningDismissed ? 'none' : 'block';
             warning.style.display = 'block';
           };
+
+          dismissButton.addEventListener('click', () => {
+            warningDismissed = true;
+            warningText.textContent = '';
+            dismissButton.style.display = 'none';
+          });
 
           const sendHeartbeat = () => {
             fetch(heartbeatUrl, {
