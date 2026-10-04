@@ -6,12 +6,12 @@
   <style>
     .chart-container {
       position: relative;
-      height: 180px;
+      height: 360px;
     }
 
     @media (max-width: 576px) {
       .chart-container {
-        height: 320px;
+        height: 640px;
       }
     }
   </style>
@@ -163,8 +163,10 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { display: true },
+            legend: { display: true, labels: { font: { size: 15 } } },
             tooltip: {
+              bodyFont: { size: 14 },
+              titleFont: { size: 15 },
               callbacks: {
                 title: (items) => {
                   if (!items || items.length === 0) return '';
@@ -176,15 +178,20 @@
           },
           scales: {
             x: {
-              title: { display: true, text: 'Time' },
+              type: 'category',
+              title: { display: true, text: 'Time', font: { size: 15, weight: 'bold' } },
               ticks: {
+                font: { size: 13 },
                 callback: (value, index) => {
                   const raw = currentStats.extendedLabels[index];
                   return raw ? formatMonthDay(raw) : value;
                 }
               }
             },
-            y: { title: { display: true, text: 'kg' } },
+            y: {
+              title: { display: true, text: 'kg', font: { size: 15, weight: 'bold' } },
+              ticks: { font: { size: 13 } },
+            },
           }
         }
       });
