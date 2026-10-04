@@ -141,7 +141,7 @@ STORAGES = {
     },
 }
 
-LOGIN_REDIRECT_URL = '/pets/'
+LOGIN_REDIRECT_URL = '/haushalt/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # Default primary key field type

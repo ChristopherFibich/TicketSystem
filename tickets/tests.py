@@ -205,6 +205,17 @@ class GraphsAccessTests(TestCase):
 
 		self.assertContains(response, reverse("graphs"))
 
+	def test_login_redirects_to_haushalt(self):
+		User.objects.create_user(username="alice", password="pw")
+
+		response = self.client.post(
+			reverse("login"),
+			{"username": "alice", "password": "pw"},
+			follow=False,
+		)
+
+		self.assertRedirects(response, reverse("haushalt_tickets"))
+
 
 class ScoreboardGraphTests(TestCase):
 	def test_scoreboard_includes_cumulative_points_graph_data(self):
