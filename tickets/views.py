@@ -550,11 +550,15 @@ def abwesend_toggle(request: HttpRequest) -> HttpResponse:
 	availability.is_absent = not bool(availability.is_absent)
 	availability.updated_by = request.user
 	availability.save(update_fields=["is_absent", "updated_by", "updated_at"])
-	if availability.is_absent:
-		try:
-			UserAvailabilityEvent.objects.create(user=request.user, day=today, created_by=request.user)
-		except (OperationalError, ProgrammingError):
-			pass
+	try:
+		UserAvailabilityEvent.objects.create(
+			user=request.user,
+			day=today,
+			is_absent=availability.is_absent,
+			created_by=request.user,
+		)
+	except (OperationalError, ProgrammingError):
+		pass
 
 	next_url = (request.POST.get("next") or "").strip()
 	if not url_has_allowed_host_and_scheme(next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
@@ -1127,20 +1131,37 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 		end_day = timezone.localdate()
 		start_day = end_day - timedelta(days=max(1, days) - 1)
 		labels = [(start_day + timedelta(days=i)).isoformat() for i in range((end_day - start_day).days + 1)]
+		label_dates = [date.fromisoformat(label) for label in labels]
 		counts: dict[tuple[int, str], int] = {}
 		try:
 			rows = list(
 				absent_events.filter(day__gte=start_day, day__lte=end_day)
-				.values("day", "user")
-				.annotate(c=Count("id"))
+				.order_by("day", "created_at", "id")
+				.values("day", "user", "is_absent")
 			)
 		except (OperationalError, ProgrammingError):
 			rows = []
-		for row in rows:
-			day = row["day"]
-			if not day:
-				continue
-			counts[(int(row["user"]), day.isoformat())] = int(row["c"] or 0)
+
+		for u in users_list:
+			current_absent = False
+			start_date: date | None = None
+			user_rows = [row for row in rows if int(row["user"]) == u.id]
+			for row in user_rows:
+				event_day = row["day"]
+				is_absent = bool(row["is_absent"])
+				if is_absent and not current_absent:
+					current_absent = True
+					start_date = event_day
+				elif not is_absent and current_absent and start_date is not None:
+					for label_date in label_dates:
+						if start_date <= label_date <= event_day:
+							counts[(u.id, label_date.isoformat())] = 1
+					current_absent = False
+					start_date = None
+			if current_absent and start_date is not None:
+				for label_date in label_dates:
+					if start_date <= label_date <= end_day:
+						counts[(u.id, label_date.isoformat())] = 1
 
 		series = []
 		for u in users_list:

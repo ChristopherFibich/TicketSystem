@@ -124,6 +124,7 @@ class UserAvailability(models.Model):
 class UserAvailabilityEvent(models.Model):
 	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="availability_events")
 	day = models.DateField(db_index=True, default=timezone.localdate)
+	is_absent = models.BooleanField(default=False)
 	created_at = models.DateTimeField(auto_now_add=True)
 	created_by = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
