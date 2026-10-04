@@ -8,7 +8,7 @@ from django.db.models import Avg, Count, Q, Sum
 from django.db import OperationalError, ProgrammingError, transaction
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.db.models.functions import Coalesce
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -36,6 +36,7 @@ from .models import (
 	TicketStatus,
 	UserAvailability,
 	UserAvailabilityEvent,
+	UserActivity,
 	WeightEntry,
 )
 
@@ -46,6 +47,26 @@ def _is_user_absent(user) -> bool:
 	if not user.is_authenticated:
 		return False
 	return UserAvailability.objects.filter(user=user, is_absent=True).exists()
+
+
+@login_required
+def activity_heartbeat(request: HttpRequest) -> HttpResponse:
+	if request.method != "POST":
+		return JsonResponse({"active_users": []}, status=405)
+
+	now = timezone.now()
+	activity, _ = UserActivity.objects.get_or_create(user=request.user, defaults={"last_seen": now})
+	if activity.last_seen < now - timedelta(seconds=20):
+		activity.last_seen = now
+		activity.save(update_fields=["last_seen"])
+	active_since = now - timedelta(minutes=2)
+	active_users = list(
+		UserActivity.objects.filter(last_seen__gte=active_since)
+		.exclude(user=request.user)
+		.order_by("user__username")
+		.values_list("user__username", flat=True)
+	)
+	return JsonResponse({"active_users": active_users})
 
 
 def _default_ticket_card_style() -> dict[str, str]:

@@ -141,6 +141,14 @@ class UserAvailabilityEvent(models.Model):
 		return f"{self.day} {self.user}"
 
 
+class UserActivity(models.Model):
+	user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="activity")
+	last_seen = models.DateTimeField(db_index=True)
+
+	def __str__(self) -> str:
+		return f"{self.user}: {self.last_seen}"
+
+
 class Tag(models.Model):
 	name = models.CharField(max_length=50, unique=True)
 	created_at = models.DateTimeField(auto_now_add=True)

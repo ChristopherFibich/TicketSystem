@@ -9,10 +9,11 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.test.client import RequestFactory
 from django.urls import reverse
+from django.utils import timezone
 
 from .admin import TicketTemplateAdmin
 from .forms import TicketUpdateForm
-from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserAvailability, UserAvailabilityEvent
+from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserActivity, UserAvailability, UserAvailabilityEvent
 
 
 User = get_user_model()
@@ -265,6 +266,17 @@ class TicketCreateFlowTests(TestCase):
 
 
 class AbwesendToggleTests(TestCase):
+	def test_activity_heartbeat_reports_other_active_users(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		other = User.objects.create_user(username="bob", password="pw")
+		UserActivity.objects.create(user=other, last_seen=timezone.now())
+		self.client.force_login(user)
+
+		response = self.client.post(reverse("activity_heartbeat"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json(), {"active_users": ["bob"]})
+
 	def test_abwesend_toggle_flips_presence_and_exposes_context(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)

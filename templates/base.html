@@ -87,10 +87,48 @@
       {% block content %}{% endblock %}
     </main>
 
+    <div id="activeUsersWarning" class="alert alert-warning position-fixed bottom-0 start-50 translate-middle-x mb-3 shadow-sm" style="display: {% if active_users %}block{% else %}none{% endif %}; z-index: 1080;" role="status">
+      ⚠️ <span id="activeUsersWarningText">{% if active_users %}{{ active_users|join:", " }} {% if active_users|length == 1 %}is{% else %}are{% endif %} currently active.{% endif %}</span>
+    </div>
+
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
+    {% if user.is_authenticated %}
+      <script>
+        (function () {
+          const warning = document.getElementById('activeUsersWarning');
+          const warningText = document.getElementById('activeUsersWarningText');
+          const heartbeatUrl = '{% url "activity_heartbeat" %}';
+          const csrfToken = document.cookie.split('; ').find((row) => row.startsWith('csrftoken='))?.split('=')[1];
+
+          const updateWarning = (activeUsers) => {
+            if (!activeUsers || activeUsers.length === 0) {
+              warning.style.display = 'none';
+              return;
+            }
+            const verb = activeUsers.length === 1 ? 'is' : 'are';
+            warningText.textContent = `${activeUsers.join(', ')} ${verb} currently active.`;
+            warning.style.display = 'block';
+          };
+
+          const sendHeartbeat = () => {
+            fetch(heartbeatUrl, {
+              method: 'POST',
+              headers: { 'X-CSRFToken': csrfToken, 'X-Requested-With': 'XMLHttpRequest' },
+              credentials: 'same-origin',
+            })
+              .then((response) => response.ok ? response.json() : null)
+              .then((payload) => payload && updateWarning(payload.active_users))
+              .catch(() => {});
+          };
+
+          sendHeartbeat();
+          window.setInterval(sendHeartbeat, 30000);
+        })();
+      </script>
+    {% endif %}
   </body>
 </html>
