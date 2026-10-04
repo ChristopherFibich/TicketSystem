@@ -290,6 +290,17 @@ class AbwesendToggleTests(TestCase):
 		self.assertIn("week", payload)
 		self.assertTrue(any(sum(series["data"]) > 0 for series in payload["week"]["series"]))
 
+	def test_scoreboard_shows_bar_when_user_is_currently_absent(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		self.client.post(reverse("abwesend_toggle"), {"next": reverse("scoreboard")})
+
+		response = self.client.get(reverse("scoreboard"))
+		payload = json.loads(response.context["abwesend_graph_json"])
+		series = next(item for item in payload["week"]["series"] if item["label"] == user.username)
+		self.assertEqual(series["data"][-1], 1)
+
 
 class HaushaltTicketsViewTests(TestCase):
 	def test_haushalt_view_shows_daily_weekly_and_monthly_tagged_tickets(self):
