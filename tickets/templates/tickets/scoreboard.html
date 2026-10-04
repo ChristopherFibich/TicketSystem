@@ -8,12 +8,14 @@
   <style>
     .scoreboard-chart-container {
       position: relative;
-      height: 400px;
+      height: min(400px, 52vw);
+      min-height: 280px;
     }
 
     @media (max-width: 576px) {
       .scoreboard-chart-container {
-        height: 720px;
+        height: min(420px, 85vw);
+        min-height: 300px;
       }
     }
   </style>
