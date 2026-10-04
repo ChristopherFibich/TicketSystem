@@ -41,6 +41,13 @@ class TicketTemplateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["fixed_assignee"].queryset = get_user_model().objects.filter(is_active=True).order_by("username", "id")
+        self.fields["eligible_users"] = forms.ModelMultipleChoiceField(
+            label="Eligible users",
+            queryset=get_user_model().objects.filter(is_active=True).order_by("username", "id"),
+            required=False,
+            widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 6}),
+            help_text="For pool assignment, select the users who may receive this template. Leave empty to include everyone active.",
+        )
 
 
 class TicketUpdateForm(forms.ModelForm):

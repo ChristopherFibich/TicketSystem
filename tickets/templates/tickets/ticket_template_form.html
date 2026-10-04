@@ -76,6 +76,13 @@
       </div>
     </div>
 
+    <div class="mb-3">
+      <label class="form-label" for="id_eligible_users">Eligible users</label>
+      {{ form.eligible_users }}
+      {{ form.eligible_users.errors }}
+      <div class="form-text">For pool assignment, select the users who may receive this template. Leave empty to include everyone active.</div>
+    </div>
+
     <div class="row g-2">
       <div class="col-12 col-md-4 mb-3">
         <label class="form-label" for="id_points">Points</label>

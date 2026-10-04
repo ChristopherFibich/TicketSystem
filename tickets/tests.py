@@ -338,6 +338,29 @@ class HaushaltTicketsViewTests(TestCase):
 		self.assertEqual(template.description, "Clean the kitchen")
 		self.assertEqual(list(template.eligibilities.values_list("user_id", flat=True)), [user.id])
 
+	def test_create_pool_template_for_selected_users(self):
+		creator = User.objects.create_user(username="creator", password="pw")
+		selected = User.objects.create_user(username="selected", password="pw")
+		other = User.objects.create_user(username="other", password="pw")
+		self.client.force_login(creator)
+
+		response = self.client.post(
+			reverse("ticket_template_create"),
+			{
+				"title": "Selected rotation",
+				"frequency": RecurrenceFrequency.DAILY,
+				"interval": 1,
+				"start_date": "2026-10-04",
+				"assignment_mode": AssignmentMode.POOL,
+				"points": 1,
+				"eligible_users": [selected.id, other.id],
+			},
+		)
+
+		template = TicketTemplate.objects.get(title="Selected rotation")
+		self.assertRedirects(response, reverse("haushalt_tickets"))
+		self.assertCountEqual(template.eligibilities.values_list("user_id", flat=True), [selected.id, other.id])
+
 	def test_haushalt_view_shows_daily_weekly_and_monthly_tagged_tickets(self):
 		alice = User.objects.create_user(username="alice", password="pw")
 		bob = User.objects.create_user(username="bob", password="pw")

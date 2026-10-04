@@ -238,10 +238,13 @@ def ticket_template_create(request: HttpRequest) -> HttpResponse:
 			with transaction.atomic():
 				template = form.save()
 				if template.assignment_mode == AssignmentMode.POOL:
+					eligible_users = list(form.cleaned_data["eligible_users"])
+					if not eligible_users:
+						eligible_users = list(AuthUser.objects.filter(is_active=True).only("id"))
 					TicketTemplateEligibility.objects.bulk_create(
 						[
 							TicketTemplateEligibility(template=template, user=user, weight=1)
-							for user in AuthUser.objects.filter(is_active=True).only("id")
+							for user in eligible_users
 						]
 					)
 			return redirect("haushalt_tickets")
