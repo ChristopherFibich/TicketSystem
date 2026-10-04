@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Template{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 class="h4 m-0">Create Template</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'haushalt_tickets' %}">Cancel</a>
+  </div>
+
+  <form method="post" class="card card-body">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+
+    <div class="mb-3">
+      <label class="form-label" for="id_title">Title</label>
+      {{ form.title }}
+      {{ form.title.errors }}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="id_description">Description</label>
+      {{ form.description }}
+      {{ form.description.errors }}
+    </div>
+
+    <div class="form-check mb-3">
+      {{ form.active }}
+      <label class="form-check-label" for="id_active">Active</label>
+      {{ form.active.errors }}
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-4 mb-3">
+        <label class="form-label" for="id_frequency">Frequency</label>
+        {{ form.frequency }}
+        {{ form.frequency.errors }}
+      </div>
+      <div class="col-12 col-md-4 mb-3">
+        <label class="form-label" for="id_interval">Every</label>
+        {{ form.interval }}
+        {{ form.interval.errors }}
+      </div>
+      <div class="col-12 col-md-4 mb-3">
+        <label class="form-label" for="id_start_date">Start date</label>
+        {{ form.start_date }}
+        {{ form.start_date.errors }}
+      </div>
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-6 mb-3">
+        <label class="form-label" for="id_weekly_weekday">Weekly weekday</label>
+        {{ form.weekly_weekday }}
+        {{ form.weekly_weekday.errors }}
+        <div class="form-text">0 = Monday, 6 = Sunday. Only used for weekly templates.</div>
+      </div>
+      <div class="col-12 col-md-6 mb-3">
+        <label class="form-label" for="id_monthly_day">Monthly day</label>
+        {{ form.monthly_day }}
+        {{ form.monthly_day.errors }}
+        <div class="form-text">Use a day from 1 to 28. Only used for monthly templates.</div>
+      </div>
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-6 mb-3">
+        <label class="form-label" for="id_assignment_mode">Assignment mode</label>
+        {{ form.assignment_mode }}
+        {{ form.assignment_mode.errors }}
+      </div>
+      <div class="col-12 col-md-6 mb-3">
+        <label class="form-label" for="id_fixed_assignee">Fixed assignee</label>
+        {{ form.fixed_assignee }}
+        {{ form.fixed_assignee.errors }}
+      </div>
+    </div>
+
+    <div class="row g-2">
+      <div class="col-12 col-md-4 mb-3">
+        <label class="form-label" for="id_points">Points</label>
+        {{ form.points }}
+        {{ form.points.errors }}
+      </div>
+      <div class="col-12 col-md-8 mb-3 d-flex align-items-end">
+        <div class="form-check mb-2">
+          {{ form.counts_for_score }}
+          <label class="form-check-label" for="id_counts_for_score">Counts for score</label>
+          {{ form.counts_for_score.errors }}
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="id_tags">Tags</label>
+      {{ form.tags }}
+      {{ form.tags.errors }}
+      <div class="form-text">Hold Ctrl/Cmd to select multiple.</div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Create Template</button>
+      <a class="btn btn-outline-secondary" href="{% url 'haushalt_tickets' %}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

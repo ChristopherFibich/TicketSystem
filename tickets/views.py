@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.db.models import Avg, Count, Q, Sum
-from django.db import OperationalError, ProgrammingError
+from django.db import OperationalError, ProgrammingError, transaction
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import TicketCreateForm, TicketUpdateForm
+from .forms import TicketCreateForm, TicketTemplateForm, TicketUpdateForm
 from .access import can_view_graphs
 from .models import (
 	Completion,
@@ -32,6 +32,7 @@ from .models import (
 	Ticket,
 	TicketPriority,
 	TicketTemplate,
+	TicketTemplateEligibility,
 	TicketStatus,
 	UserAvailability,
 	UserAvailabilityEvent,
@@ -227,6 +228,27 @@ def haushalt_tickets(request: HttpRequest) -> HttpResponse:
 			"ticket_count": len(tickets),
 		},
 	)
+
+
+@login_required
+def ticket_template_create(request: HttpRequest) -> HttpResponse:
+	if request.method == "POST":
+		form = TicketTemplateForm(request.POST)
+		if form.is_valid():
+			with transaction.atomic():
+				template = form.save()
+				if template.assignment_mode == AssignmentMode.POOL:
+					TicketTemplateEligibility.objects.bulk_create(
+						[
+							TicketTemplateEligibility(template=template, user=user, weight=1)
+							for user in AuthUser.objects.filter(is_active=True).only("id")
+						]
+					)
+			return redirect("haushalt_tickets")
+	else:
+		form = TicketTemplateForm(initial={"active": True, "interval": 1, "points": 1, "counts_for_score": True})
+
+	return render(request, "tickets/ticket_template_form.html", {"form": form})
 
 
 @login_required

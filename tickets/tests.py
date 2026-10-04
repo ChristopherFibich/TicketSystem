@@ -314,6 +314,30 @@ class AbwesendToggleTests(TestCase):
 
 
 class HaushaltTicketsViewTests(TestCase):
+	def test_create_template_from_haushalt_page(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		response = self.client.post(
+			reverse("ticket_template_create"),
+			{
+				"title": "Weekly cleanup",
+				"description": "Clean the kitchen",
+				"active": "on",
+				"frequency": RecurrenceFrequency.WEEKLY,
+				"interval": 1,
+				"start_date": "2026-10-04",
+				"assignment_mode": AssignmentMode.POOL,
+				"points": 2,
+				"counts_for_score": "on",
+			},
+		)
+
+		template = TicketTemplate.objects.get(title="Weekly cleanup")
+		self.assertRedirects(response, reverse("haushalt_tickets"))
+		self.assertEqual(template.description, "Clean the kitchen")
+		self.assertEqual(list(template.eligibilities.values_list("user_id", flat=True)), [user.id])
+
 	def test_haushalt_view_shows_daily_weekly_and_monthly_tagged_tickets(self):
 		alice = User.objects.create_user(username="alice", password="pw")
 		bob = User.objects.create_user(username="bob", password="pw")

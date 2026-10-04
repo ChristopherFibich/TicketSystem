@@ -22,7 +22,10 @@
       <h1 class="h4 m-0">Haushalt</h1>
       <div class="text-body-secondary small">{{ ticket_count }} ticket{{ ticket_count|pluralize }}</div>
     </div>
-    <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New Ticket</a>
+    <div class="d-flex gap-2">
+      <a class="btn btn-primary btn-sm" href="{% url 'ticket_create' %}">New Ticket</a>
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'ticket_template_create' %}">Create Template</a>
+    </div>
   </div>
 
   <form class="mb-3" method="get" action="{% url 'haushalt_tickets' %}">
