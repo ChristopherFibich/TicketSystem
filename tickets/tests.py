@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from unittest.mock import patch
 
@@ -203,6 +204,19 @@ class GraphsAccessTests(TestCase):
 		response = self.client.get(reverse("dashboard"))
 
 		self.assertContains(response, reverse("graphs"))
+
+
+class ScoreboardGraphTests(TestCase):
+	def test_scoreboard_includes_cumulative_points_graph_data(self):
+		alice = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(alice)
+
+		response = self.client.get(reverse("scoreboard"))
+		self.assertEqual(response.status_code, 200)
+		payload = json.loads(response.context["scoreboard_graph_json"])
+		self.assertIn("week", payload)
+		self.assertIn("cumulative_series", payload["week"])
+		self.assertContains(response, "Show cumulative score")
 
 
 class AbwesendToggleTests(TestCase):

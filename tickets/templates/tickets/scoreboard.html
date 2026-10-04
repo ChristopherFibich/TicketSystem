@@ -40,7 +40,9 @@
           <button type="button" class="btn btn-outline-secondary" data-range="month">Last month</button>
           <button type="button" class="btn btn-outline-secondary" data-range="all">All time</button>
         </div>
-        <small class="text-body-secondary">Y: tickets done · X: time</small>
+        <button id="scoreGraphToggle" type="button" class="btn btn-outline-secondary btn-sm" data-graph-mode="count">
+          Show cumulative score
+        </button>
       </div>
       <div class="scoreboard-chart-container">
         <canvas id="scoreboardChart"></canvas>
@@ -332,11 +334,26 @@
         },
       };
 
-      const getRangePayload = (range) => graphData[range] || { labels: [], series: [] };
+      const getRangePayload = (range) => graphData[range] || { labels: [], series: [], cumulative_series: [] };
+      const scoreToggle = document.getElementById('scoreGraphToggle');
 
       let currentRange = 'week';
+      let useCumulativeScore = false;
       const initial = getRangePayload(currentRange);
       const initialAbsent = absentGraphData[currentRange] || { labels: [], series: [] };
+
+      const applyScoreChartMode = () => {
+        const payload = getRangePayload(currentRange);
+        const series = useCumulativeScore ? (payload.cumulative_series || payload.series || []) : (payload.series || []);
+        chart.data.labels = payload.labels || [];
+        chart.data.datasets = buildDatasets(series);
+        chart.options.scales.y.title.text = useCumulativeScore ? 'Cumulative score' : 'Tickets done';
+        chart.update();
+
+        if (scoreToggle) {
+          scoreToggle.textContent = useCumulativeScore ? 'Show tickets done' : 'Show cumulative score';
+        }
+      };
 
       const chart = new Chart(canvas, {
         type: 'line',
@@ -426,9 +443,6 @@
         currentRange = range;
         const payload = getRangePayload(range);
         const absentPayload = absentGraphData[range] || { labels: [], series: [] };
-        chart.data.labels = payload.labels || [];
-        chart.data.datasets = buildDatasets(payload.series);
-        chart.update();
 
         absentChart.data.labels = absentPayload.labels || [];
         absentChart.data.datasets = buildBarDatasets(absentPayload.series);
@@ -437,11 +451,20 @@
         document.querySelectorAll('[data-range]').forEach(btn => {
           btn.classList.toggle('active', btn.getAttribute('data-range') === range);
         });
+
+        applyScoreChartMode();
       };
 
       document.querySelectorAll('[data-range]').forEach(btn => {
         btn.addEventListener('click', () => setRange(btn.getAttribute('data-range')));
       });
+
+      if (scoreToggle) {
+        scoreToggle.addEventListener('click', () => {
+          useCumulativeScore = !useCumulativeScore;
+          applyScoreChartMode();
+        });
+      }
 
       collapseEl.addEventListener('shown.bs.collapse', () => {
         chart.resize();

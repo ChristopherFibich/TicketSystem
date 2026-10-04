@@ -1012,15 +1012,46 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			)
 		return {"labels": labels, "series": series}
 
+	def _cumulative_points_graph_for_labels(labels: list[str], *, point_key: str):
+		point_totals: dict[tuple[int, str], int] = {}
+		for row in (
+			household_completions.filter(completed_at__date__gte=labels[0], completed_at__date__lte=labels[-1])
+			.annotate(day=TruncDate("completed_at"))
+			.values("day", "completed_by")
+			.annotate(points=Sum("points_awarded"))
+		):
+			day = row["day"]
+			if not day:
+				continue
+			key = (int(row["completed_by"]), day.isoformat())
+			point_totals[key] = int(row["points"] or 0)
+
+		series = []
+		for u in users_list:
+			running_total = 0
+			data = []
+			for label in labels:
+				running_total += point_totals.get((u.id, label), 0)
+				data.append(running_total)
+			series.append({"label": u.username, "data": data})
+		return {"series": series}
+
+	def _daily_cumulative_points_graph(days: int):
+		end_day = timezone.localdate()
+		start_day = end_day - timedelta(days=max(1, days) - 1)
+		labels = [(start_day + timedelta(days=i)).isoformat() for i in range((end_day - start_day).days + 1)]
+		return {"labels": labels, **_cumulative_points_graph_for_labels(labels, point_key="points_awarded")}
+
 	def _weekly_graph_all_time():
 		weekly_counts: dict[tuple[int, str], int] = {}
+		weekly_points: dict[tuple[int, str], int] = {}
 		min_week: date | None = None
 		max_week: date | None = None
 
 		for row in (
 			household_completions.annotate(week=TruncWeek("completed_at"))
 			.values("week", "completed_by")
-			.annotate(c=Count("id"))
+			.annotate(c=Count("id"), points=Sum("points_awarded"))
 			.order_by("week")
 		):
 			week = row["week"]
@@ -1032,6 +1063,7 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			if max_week is None or week_date > max_week:
 				max_week = week_date
 			weekly_counts[(int(row["completed_by"]), week_date.isoformat())] = int(row["c"] or 0)
+			weekly_points[(int(row["completed_by"]), week_date.isoformat())] = int(row["points"] or 0)
 
 		labels: list[str] = []
 		if min_week is not None and max_week is not None:
@@ -1048,7 +1080,15 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 					"data": [weekly_counts.get((u.id, w), 0) for w in labels],
 				}
 			)
-		return {"labels": labels, "series": series}
+		cumulative = []
+		for u in users_list:
+			running_total = 0
+			data = []
+			for label in labels:
+				running_total += weekly_points.get((u.id, label), 0)
+				data.append(running_total)
+			cumulative.append({"label": u.username, "data": data})
+		return {"labels": labels, "series": series, "cumulative_series": cumulative}
 
 	def _absent_graph(days: int):
 		end_day = timezone.localdate()
@@ -1079,10 +1119,16 @@ def scoreboard(request: HttpRequest) -> HttpResponse:
 			)
 		return {"labels": labels, "series": series}
 
+	week_graph = _daily_graph(7)
+	week_graph["cumulative_series"] = _daily_cumulative_points_graph(7)["series"]
+	month_graph = _daily_graph(30)
+	month_graph["cumulative_series"] = _daily_cumulative_points_graph(30)["series"]
+	all_graph = _weekly_graph_all_time()
+
 	scoreboard_graph = {
-		"week": _daily_graph(7),
-		"month": _daily_graph(30),
-		"all": _weekly_graph_all_time(),
+		"week": week_graph,
+		"month": month_graph,
+		"all": all_graph,
 	}
 	absent_graph = {
 		"week": _absent_graph(7),
