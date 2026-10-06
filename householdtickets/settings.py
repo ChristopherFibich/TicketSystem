@@ -100,6 +100,7 @@ DATABASES = {
 BROWSIDIAN_DIR = Path(os.environ.get('BROWSIDIAN_DIR', str(Path.home() / 'TicketSystem' / 'browsidian')))
 BROWSIDIAN_VAULT = Path(os.environ.get('OBSIDIAN_VAULT', str(Path.home() / 'TicketSystem' / 'browsidian' / 'browsidianVault')))
 BROWSIDIAN_PORT = int(os.environ.get('BROWSIDIAN_PORT', '5173'))
+BROWSIDIAN_PUBLIC_URL = os.environ.get('BROWSIDIAN_PUBLIC_URL', 'https://192.168.2.172').rstrip('/')
 
 
 # Password validation

@@ -213,8 +213,7 @@ def obsidian(request: HttpRequest) -> HttpResponse:
 	if error:
 		return render(request, "tickets/obsidian.html", {"error": error})
 
-	host = request.get_host().split(":", 1)[0]
-	return redirect(f"http://{host}:{settings.BROWSIDIAN_PORT}/")
+	return redirect(f"{settings.BROWSIDIAN_PUBLIC_URL}/")
 
 
 @login_required

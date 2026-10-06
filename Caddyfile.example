@@ -1,0 +1,5 @@
+https://192.168.2.172 {
+	# Browsidian itself listens only on the server.
+	reverse_proxy 127.0.0.1:5173
+	tls internal
+}
