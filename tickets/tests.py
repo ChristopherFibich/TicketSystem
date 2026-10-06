@@ -20,6 +20,32 @@ User = get_user_model()
 
 
 class RecurringTicketSchedulingTests(TestCase):
+	def test_next_ticket_interval_starts_after_completion(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		template = TicketTemplate.objects.create(
+			title="Weekly cleanup",
+			frequency=RecurrenceFrequency.WEEKLY,
+			interval=1,
+			start_date=date(2026, 7, 1),
+			weekly_weekday=0,
+			assignment_mode=AssignmentMode.FIXED,
+			fixed_assignee=user,
+		)
+
+		call_command("spawn_recurring_tickets", date="2026-07-06")
+		first_ticket = Ticket.objects.get(template=template)
+		first_ticket.mark_done(completed_by=user)
+		template.refresh_from_db()
+		template.last_completed_for = date(2026, 7, 6)
+		template.save(update_fields=["last_completed_for", "updated_at"])
+
+		call_command("spawn_recurring_tickets", date="2026-07-12")
+		self.assertEqual(Ticket.objects.filter(template=template).count(), 1)
+
+		call_command("spawn_recurring_tickets", date="2026-07-13")
+		second_ticket = Ticket.objects.filter(template=template).order_by("scheduled_for_date").last()
+		self.assertEqual(second_ticket.scheduled_for_date, date(2026, 7, 13))
+
 	def test_spawn_recurring_tickets_keeps_weekly_anchor(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		template = TicketTemplate.objects.create(
@@ -44,6 +70,9 @@ class RecurringTicketSchedulingTests(TestCase):
 		ticket.status = TicketStatus.DONE
 		ticket.save(update_fields=["status", "updated_at"])
 		ticket.mark_done(completed_by=user)
+		template.refresh_from_db()
+		template.last_completed_for = date(2026, 7, 4)
+		template.save(update_fields=["last_completed_for", "updated_at"])
 
 		call_command("spawn_recurring_tickets", date="2026-07-13")
 
@@ -125,6 +154,9 @@ class RecurringTicketSchedulingTests(TestCase):
 		)
 		household_ticket.tags.add(daily_tag)
 		household_ticket.mark_done(completed_by=user_two)
+		pool_template.refresh_from_db()
+		pool_template.last_completed_for = date(2026, 7, 6)
+		pool_template.save(update_fields=["last_completed_for", "updated_at"])
 
 		with patch("tickets.management.commands.spawn_recurring_tickets.random.choices", return_value=[user_two]):
 			call_command("spawn_recurring_tickets", date="2026-07-07")

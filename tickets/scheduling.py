@@ -35,8 +35,6 @@ def _next_weekly(template: TicketTemplate, after: date) -> date:
     if template.interval < 1:
         raise CommandError(f"Template '{template}' has invalid interval")
 
-    if template.weekly_weekday is not None and after.weekday() != template.weekly_weekday:
-        after = _first_weekday_on_or_after(after, template.weekly_weekday)
     return after + timedelta(days=template.interval * 7)
 
 
@@ -62,11 +60,11 @@ def next_scheduled_date(template: TicketTemplate, after: date) -> date:
 def next_scheduled_for(template: TicketTemplate) -> date:
     """Return the next scheduled date for a template.
 
-    Uses template.last_scheduled_for as the reference point when available.
-    Falls back to template.last_completed_for for older rows, then start_date.
+    Uses the completion date as the reference point once a ticket is completed.
+    Falls back to the scheduled date for templates without a completion yet.
     """
 
-    last = template.last_scheduled_for or template.last_completed_for
+    last = template.last_completed_for or template.last_scheduled_for
     if last is None:
         if template.frequency == RecurrenceFrequency.WEEKLY and template.weekly_weekday is not None:
             return _first_weekday_on_or_after(template.start_date, template.weekly_weekday)
