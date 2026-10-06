@@ -97,6 +97,10 @@ DATABASES = {
     }
 }
 
+BROWSIDIAN_DIR = Path(os.environ.get('BROWSIDIAN_DIR', str(BASE_DIR / 'Browsidian' / 'browsidian')))
+BROWSIDIAN_VAULT = Path(os.environ.get('OBSIDIAN_VAULT', str(BASE_DIR / 'Browsidian' / 'browsidianVault')))
+BROWSIDIAN_PORT = int(os.environ.get('BROWSIDIAN_PORT', '5173'))
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

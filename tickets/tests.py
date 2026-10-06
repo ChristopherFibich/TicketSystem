@@ -238,6 +238,17 @@ class GraphsAccessTests(TestCase):
 
 		self.assertContains(response, reverse("graphs"))
 
+	def test_obsidian_link_shows_in_nav_and_reports_missing_vault(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("dashboard"))
+		self.assertContains(response, reverse("obsidian"))
+
+		response = self.client.get(reverse("obsidian"))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Obsidian vault not found")
+
 	def test_help_page_displays_github_commits(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)

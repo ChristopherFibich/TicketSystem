@@ -8,6 +8,7 @@ urlpatterns = [
     path("haushalt/templates/new/", views.ticket_template_create, name="ticket_template_create"),
     path("templates/", views.ticket_templates, name="ticket_templates"),
     path("templates/<int:pk>/edit/", views.ticket_template_edit, name="ticket_template_edit"),
+    path("obsidian/", views.obsidian, name="obsidian"),
     path("daily/", views.haushalt_tickets, name="daily_tickets"),
     path("todo/", views.todo_tickets, name="todo_tickets"),
     path("dashboard/", views.dashboard, name="dashboard"),

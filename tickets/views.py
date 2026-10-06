@@ -1,6 +1,9 @@
 from datetime import date, timedelta
 import json
 import re
+import shutil
+import subprocess
+import threading
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -8,6 +11,7 @@ from urllib.request import Request, urlopen
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.db.models import Avg, Count, Q, Sum
 from django.db import OperationalError, ProgrammingError, transaction
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
@@ -46,6 +50,46 @@ from .models import (
 )
 
 AuthUser = get_user_model()
+
+_browsidian_process = None
+_browsidian_lock = threading.Lock()
+
+
+def _start_browsidian() -> str | None:
+	global _browsidian_process
+	server_file = settings.BROWSIDIAN_DIR / "server.js"
+	if not server_file.is_file():
+		return f"Browsidian server not found: {server_file}"
+	if not settings.BROWSIDIAN_VAULT.is_dir():
+		return f"Obsidian vault not found: {settings.BROWSIDIAN_VAULT}"
+
+	with _browsidian_lock:
+		if _browsidian_process is not None and _browsidian_process.poll() is None:
+			return None
+		node = shutil.which("node")
+		if not node:
+			return "Node.js is not installed or is not available on PATH."
+		try:
+			_browsidian_process = subprocess.Popen(
+				[
+					node,
+					str(server_file),
+					"--host",
+					"0.0.0.0",
+					"--port",
+					str(settings.BROWSIDIAN_PORT),
+					"--vault",
+					str(settings.BROWSIDIAN_VAULT),
+				],
+				cwd=str(settings.BROWSIDIAN_DIR),
+				stdin=subprocess.DEVNULL,
+				stdout=subprocess.DEVNULL,
+				stderr=subprocess.DEVNULL,
+				start_new_session=True,
+			)
+			return None
+		except OSError as exc:
+			return f"Could not start Browsidian: {exc}"
 
 
 def _is_user_absent(user) -> bool:
@@ -161,6 +205,16 @@ def home(request: HttpRequest) -> HttpResponse:
 	if request.user.is_authenticated:
 		return redirect("haushalt_tickets")
 	return redirect("login")
+
+
+@login_required
+def obsidian(request: HttpRequest) -> HttpResponse:
+	error = _start_browsidian()
+	if error:
+		return render(request, "tickets/obsidian.html", {"error": error})
+
+	host = request.get_host().split(":", 1)[0]
+	return redirect(f"http://{host}:{settings.BROWSIDIAN_PORT}/")
 
 
 @login_required
