@@ -1,0 +1,3 @@
+[submodule "Browsidian/browsidian"]
+	path = Browsidian/browsidian
+	url = https://github.com/blamouche/browsidian.git
