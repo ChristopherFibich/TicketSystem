@@ -264,6 +264,8 @@ class GraphsAccessTests(TestCase):
 		self.assertContains(response, "Add a helpful change")
 		self.assertContains(response, "abcdef1")
 		self.assertContains(response, 'href="https://github.com/ChristopherFibich/TicketSystem"')
+		self.assertContains(response, "Neues Ticket aus Template erstellen")
+		self.assertContains(response, "Neues Template erstellen")
 		self.assertContains(response, reverse("ticket_creation_guide"))
 
 	def test_ticket_creation_guide_is_available(self):

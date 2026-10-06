@@ -14,7 +14,7 @@
       aria-expanded="false"
       aria-controls="ticketCreationGuide"
     >
-      Anleitungen
+      Neues Ticket aus Template erstellen
     </button>
     <div class="collapse mt-3" id="ticketCreationGuide">
       <img
@@ -23,6 +23,29 @@
         alt="Anleitung zum Erstellen eines Tickets"
         class="img-fluid border rounded"
       >
+    </div>
+  </div>
+
+  <div class="card card-body mb-3">
+    <button
+      class="btn btn-link fw-bold text-start text-decoration-none p-0"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#templateCreationGuide"
+      aria-expanded="false"
+      aria-controls="templateCreationGuide"
+    >
+      Neues Template erstellen
+    </button>
+    <div class="collapse mt-3" id="templateCreationGuide">
+      <ol class="mb-3">
+        <li>Öffne <strong>Templates</strong> im Menü.</li>
+        <li>Klicke auf <strong>Create Template</strong>.</li>
+        <li>Gib Titel, Beschreibung, Häufigkeit und Startdatum ein.</li>
+        <li>Wähle die Zuweisungsart und die berechtigten Benutzer aus.</li>
+        <li>Lege Punkte und Tags fest und speichere das Template.</li>
+      </ol>
+      <a class="btn btn-outline-primary btn-sm" href="{% url 'ticket_template_create' %}">Create Template</a>
     </div>
   </div>
 
