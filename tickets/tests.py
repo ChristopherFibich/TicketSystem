@@ -273,7 +273,7 @@ class GraphsAccessTests(TestCase):
 		response = self.client.get(reverse("ticket_creation_guide"))
 
 		self.assertEqual(response.status_code, 200)
-		self.assertContains(response, "app.diagrams.net")
+		self.assertEqual(response["Content-Type"], "image/png")
 
 	def test_login_redirects_to_haushalt(self):
 		User.objects.create_user(username="alice", password="pw")

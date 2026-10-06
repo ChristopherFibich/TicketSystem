@@ -609,10 +609,10 @@ def help_page(request: HttpRequest) -> HttpResponse:
 
 
 @login_required
-def ticket_creation_guide(request: HttpRequest) -> HttpResponse:
-	guide_path = Path(__file__).resolve().parent.parent / "Docs" / "create_Ticket.drawio.html"
+def ticket_creation_guide_image(request: HttpRequest) -> HttpResponse:
+	guide_path = Path(__file__).resolve().parent.parent / "Docs" / "create_Ticket.drawio.png"
 	try:
-		return HttpResponse(guide_path.read_bytes(), content_type="text/html; charset=utf-8")
+		return HttpResponse(guide_path.read_bytes(), content_type="image/png")
 	except FileNotFoundError:
 		return HttpResponse("Guide not found.", status=404)
 
