@@ -66,5 +66,26 @@
     </div>
   {% endif %}
 
+  <div class="card card-body mb-3">
+    <div class="fw-semibold mb-2">GitHub commits</div>
+    {% if github_commits_error %}
+      <div class="text-body-secondary">{{ github_commits_error }}</div>
+    {% elif github_commits %}
+      <div class="list-group" style="max-height: 28rem; overflow-y: auto;">
+        {% for commit in github_commits %}
+          <a class="list-group-item list-group-item-action" href="{{ commit.url }}" target="_blank" rel="noopener">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <span class="fw-semibold">{{ commit.message }}</span>
+              <code>{{ commit.sha }}</code>
+            </div>
+            <small class="text-body-secondary">{{ commit.author }} · {{ commit.date|slice:":10" }}</small>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-body-secondary">No commits found.</div>
+    {% endif %}
+  </div>
+
   <div class="text-body-secondary"><small>Tip: On phones, add the site to your home screen for quick access.</small></div>
 {% endblock %}

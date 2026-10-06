@@ -1,5 +1,8 @@
 from datetime import date, timedelta
 import json
+import re
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -8,6 +11,7 @@ from django.db.models import Avg, Count, Q, Sum
 from django.db import OperationalError, ProgrammingError, transaction
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
 from django.db.models.functions import Coalesce
+from django.core.cache import cache
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -599,7 +603,54 @@ def _ticket_list_view(request: HttpRequest, *, include_daily: bool, title: str, 
 
 @login_required
 def help_page(request: HttpRequest) -> HttpResponse:
-	return render(request, "tickets/help.html")
+	commits, commits_error = _github_commits()
+	return render(request, "tickets/help.html", {"github_commits": commits, "github_commits_error": commits_error})
+
+
+def _github_commits() -> tuple[list[dict[str, str]], str]:
+	cache_key = "ticket_system_github_commits"
+	cached = cache.get(cache_key)
+	if cached is not None:
+		return cached
+
+	commits: list[dict[str, str]] = []
+	next_url = "https://api.github.com/repos/ChristopherFibich/TicketSystem/commits?per_page=100"
+	try:
+		while next_url:
+			request = Request(
+				next_url,
+				headers={
+					"Accept": "application/vnd.github+json",
+					"User-Agent": "TicketSystem",
+				},
+			)
+			with urlopen(request, timeout=5) as response:
+				payload = json.load(response)
+				link_header = response.headers.get("Link", "")
+
+			for commit in payload:
+				commit_data = commit.get("commit", {})
+				author_data = commit_data.get("author", {})
+				commits.append(
+					{
+						"sha": commit.get("sha", "")[:7],
+						"url": commit.get("html_url", ""),
+						"message": (commit_data.get("message", "").splitlines() or [""])[0],
+						"author": author_data.get("name", "Unknown"),
+						"date": author_data.get("date", ""),
+					}
+				)
+
+			match = re.search(r'<([^>]+)>;\s*rel="next"', link_header)
+			next_url = match.group(1) if match else ""
+	except (HTTPError, URLError, TimeoutError, ValueError, OSError):
+		result = ([], "GitHub commits are currently unavailable.")
+		cache.set(cache_key, result, 60)
+		return result
+
+	result = (commits, "")
+	cache.set(cache_key, result, 300)
+	return result
 
 
 @login_required

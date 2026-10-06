@@ -238,6 +238,32 @@ class GraphsAccessTests(TestCase):
 
 		self.assertContains(response, reverse("graphs"))
 
+	def test_help_page_displays_github_commits(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		payload = [
+			{
+				"sha": "abcdef1234567",
+				"html_url": "https://github.com/ChristopherFibich/TicketSystem/commit/abcdef1234567",
+				"commit": {
+					"message": "Add a helpful change\n\nDetails",
+					"author": {"name": "alice", "date": "2026-10-06T12:00:00Z"},
+				},
+			}
+		]
+
+		with patch("tickets.views.urlopen") as mocked_urlopen:
+			response = mocked_urlopen.return_value.__enter__.return_value
+			response.headers.get.return_value = ""
+			response.read.return_value = json.dumps(payload).encode()
+			response.__iter__.return_value = iter([])
+			with patch("tickets.views.json.load", return_value=payload):
+				response = self.client.get(reverse("help_page"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Add a helpful change")
+		self.assertContains(response, "abcdef1")
+
 	def test_login_redirects_to_haushalt(self):
 		User.objects.create_user(username="alice", password="pw")
 
