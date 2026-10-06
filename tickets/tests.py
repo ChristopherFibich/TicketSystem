@@ -267,12 +267,22 @@ class GraphsAccessTests(TestCase):
 		self.assertContains(response, "Neues Ticket aus Template erstellen")
 		self.assertContains(response, "Neues Template erstellen")
 		self.assertContains(response, reverse("ticket_creation_guide"))
+		self.assertContains(response, reverse("ticket_template_creation_guide"))
 
 	def test_ticket_creation_guide_is_available(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)
 
 		response = self.client.get(reverse("ticket_creation_guide"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response["Content-Type"], "image/png")
+
+	def test_template_creation_guide_is_available(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("ticket_template_creation_guide"))
 
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(response["Content-Type"], "image/png")

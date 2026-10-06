@@ -19,6 +19,7 @@ urlpatterns = [
     path("all/", views.all_tickets, name="all_tickets"),
     path("help/", views.help_page, name="help_page"),
     path("help/guide/create-ticket/", views.ticket_creation_guide_image, name="ticket_creation_guide"),
+    path("help/guide/create-template/", views.ticket_template_creation_guide_image, name="ticket_template_creation_guide"),
     path("tickets/new/", views.ticket_create, name="ticket_create"),
     path("tickets/<int:pk>/", views.ticket_detail, name="ticket_detail"),
     path("scoreboard/", views.scoreboard, name="scoreboard"),

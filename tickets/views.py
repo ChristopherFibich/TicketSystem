@@ -617,6 +617,15 @@ def ticket_creation_guide_image(request: HttpRequest) -> HttpResponse:
 		return HttpResponse("Guide not found.", status=404)
 
 
+@login_required
+def ticket_template_creation_guide_image(request: HttpRequest) -> HttpResponse:
+	guide_path = Path(__file__).resolve().parent.parent / "Docs" / "create_Template.drawio.png"
+	try:
+		return HttpResponse(guide_path.read_bytes(), content_type="image/png")
+	except FileNotFoundError:
+		return HttpResponse("Guide not found.", status=404)
+
+
 def _github_commits() -> tuple[list[dict[str, str]], str]:
 	cache_key = "ticket_system_github_commits"
 	cached = cache.get(cache_key)
