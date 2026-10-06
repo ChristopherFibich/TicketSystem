@@ -97,8 +97,8 @@ DATABASES = {
     }
 }
 
-BROWSIDIAN_DIR = Path(os.environ.get('BROWSIDIAN_DIR', str(BASE_DIR / 'Browsidian' / 'browsidian')))
-BROWSIDIAN_VAULT = Path(os.environ.get('OBSIDIAN_VAULT', str(BASE_DIR / 'Browsidian' / 'browsidianVault')))
+BROWSIDIAN_DIR = Path(os.environ.get('BROWSIDIAN_DIR', str(Path.home() / 'TickeSystem' / 'browsidian')))
+BROWSIDIAN_VAULT = Path(os.environ.get('OBSIDIAN_VAULT', str(Path.home() / 'TickeSystem' / 'browsidian' / 'browsidianVault')))
 BROWSIDIAN_PORT = int(os.environ.get('BROWSIDIAN_PORT', '5173'))
 
 

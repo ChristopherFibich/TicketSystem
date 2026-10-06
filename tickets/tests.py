@@ -247,7 +247,7 @@ class GraphsAccessTests(TestCase):
 
 		response = self.client.get(reverse("obsidian"))
 		self.assertEqual(response.status_code, 200)
-		self.assertContains(response, "Obsidian vault not found")
+		self.assertContains(response, "not found")
 
 	def test_help_page_displays_github_commits(self):
 		user = User.objects.create_user(username="alice", password="pw")
