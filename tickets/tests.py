@@ -264,6 +264,16 @@ class GraphsAccessTests(TestCase):
 		self.assertContains(response, "Add a helpful change")
 		self.assertContains(response, "abcdef1")
 		self.assertContains(response, 'href="https://github.com/ChristopherFibich/TicketSystem"')
+		self.assertContains(response, reverse("ticket_creation_guide"))
+
+	def test_ticket_creation_guide_is_available(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("ticket_creation_guide"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "app.diagrams.net")
 
 	def test_login_redirects_to_haushalt(self):
 		User.objects.create_user(username="alice", password="pw")

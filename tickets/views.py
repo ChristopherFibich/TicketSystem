@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 import json
 import re
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -605,6 +606,15 @@ def _ticket_list_view(request: HttpRequest, *, include_daily: bool, title: str, 
 def help_page(request: HttpRequest) -> HttpResponse:
 	commits, commits_error = _github_commits()
 	return render(request, "tickets/help.html", {"github_commits": commits, "github_commits_error": commits_error})
+
+
+@login_required
+def ticket_creation_guide(request: HttpRequest) -> HttpResponse:
+	guide_path = Path(__file__).resolve().parent.parent / "Docs" / "create_Ticket.drawio.html"
+	try:
+		return HttpResponse(guide_path.read_bytes(), content_type="text/html; charset=utf-8")
+	except FileNotFoundError:
+		return HttpResponse("Guide not found.", status=404)
 
 
 def _github_commits() -> tuple[list[dict[str, str]], str]:

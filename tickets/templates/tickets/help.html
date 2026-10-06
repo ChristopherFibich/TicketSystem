@@ -6,6 +6,27 @@
   <h1 class="h4 mb-3">Help</h1>
 
   <div class="card card-body mb-3">
+    <button
+      class="btn btn-link fw-bold text-start text-decoration-none p-0"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#ticketCreationGuide"
+      aria-expanded="false"
+      aria-controls="ticketCreationGuide"
+    >
+      Anleitungen
+    </button>
+    <div class="collapse mt-3" id="ticketCreationGuide">
+      <iframe
+        src="{% url 'ticket_creation_guide' %}"
+        title="Anleitung zum Erstellen eines Tickets"
+        class="w-100 border rounded"
+        style="height: 42rem;"
+      ></iframe>
+    </div>
+  </div>
+
+  <div class="card card-body mb-3">
     <div class="fw-semibold mb-2">Ticket colors</div>
     <div class="text-body-secondary mb-2"><small>Blue means done; otherwise colors indicate how long it has been assigned.</small></div>
     <ul class="mb-0">
