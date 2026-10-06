@@ -263,6 +263,7 @@ class GraphsAccessTests(TestCase):
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Add a helpful change")
 		self.assertContains(response, "abcdef1")
+		self.assertContains(response, 'href="https://github.com/ChristopherFibich/TicketSystem"')
 
 	def test_login_redirects_to_haushalt(self):
 		User.objects.create_user(username="alice", password="pw")

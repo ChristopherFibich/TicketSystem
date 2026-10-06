@@ -17,7 +17,9 @@
   </div>
 
   <div class="card card-body mb-3">
-    <div class="fw-semibold mb-2">GitHub commits</div>
+    <div class="fw-semibold mb-2">
+      <a href="https://github.com/ChristopherFibich/TicketSystem" target="_blank" rel="noopener">GitHub commits</a>
+    </div>
     {% if github_commits_error %}
       <div class="text-body-secondary">{{ github_commits_error }}</div>
     {% elif github_commits %}
