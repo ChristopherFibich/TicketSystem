@@ -62,6 +62,7 @@ const state = {
 const IGNORED_DIRS = new Set([".obsidian", ".git", "node_modules", ".trash", ".DS_Store"]);
 const AUTOSAVE_DELAY_MS = 1200;
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"]);
+const PDF_EXTENSIONS = new Set([".pdf"]);
 
 function setStatus(msg) {
   statusEl.textContent = msg;
@@ -874,7 +875,7 @@ async function showPreview() {
     previewEl.innerHTML = `<div class="muted">Select a file on the left…</div>`;
     return;
   }
-  if (IMAGE_EXTENSIONS.has(extension)) {
+  if (IMAGE_EXTENSIONS.has(extension) || PDF_EXTENSIONS.has(extension)) {
     let src = state.mode === "server" ? `/api/raw?path=${encodeURIComponent(state.activeFile)}` : null;
     if (state.mode === "browser") {
       try {
@@ -887,7 +888,9 @@ async function showPreview() {
       }
     }
     previewEl.innerHTML = src
-      ? `<img class="vault-image" src="${src}" alt="${escapeHtml(state.activeFile)}" />`
+      ? PDF_EXTENSIONS.has(extension)
+        ? `<iframe class="vault-pdf" src="${src}" title="${escapeHtml(state.activeFile)}"></iframe>`
+        : `<img class="vault-image" src="${src}" alt="${escapeHtml(state.activeFile)}" />`
       : `<div class="muted">Image preview is unavailable in this mode.</div>`;
     return;
   }

@@ -522,6 +522,14 @@ body {
   background: color-mix(in srgb, var(--panel) 92%, transparent);
 }
 
+.preview .vault-pdf {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  background: var(--panel);
+}
+
 .preview img[src$="/img/browsidian.png"],
 .preview img[src$="browsidian.png"] {
   max-width: 150px;
