@@ -75,7 +75,7 @@ def _start_browsidian() -> str | None:
 					node,
 					str(server_file),
 					"--host",
-					"0.0.0.0",
+					"127.0.0.1",
 					"--port",
 					str(settings.BROWSIDIAN_PORT),
 					"--vault",
