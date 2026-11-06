@@ -362,6 +362,7 @@ class KalenderViewTests(TestCase):
 			{
 				"action": "create_appointment",
 				"title": "Dinner together",
+				"notes": "Bring the board games.",
 				"starts_at": starts_at.strftime("%Y-%m-%dT%H:%M"),
 				"ends_at": ends_at.strftime("%Y-%m-%dT%H:%M"),
 				"attendees": [alice.pk, bob.pk],
@@ -373,6 +374,7 @@ class KalenderViewTests(TestCase):
 		invitations = list(CalendarInvitation.objects.filter(event=event).select_related("ticket", "user"))
 		self.assertEqual(len(invitations), 2)
 		self.assertIsNone(event.published_at)
+		self.assertEqual(event.notes, "Bring the board games.")
 		self.assertIn("alice", invitations[0].ticket.description)
 		self.assertIn("bob", invitations[0].ticket.description)
 
@@ -384,7 +386,10 @@ class KalenderViewTests(TestCase):
 		event.refresh_from_db()
 		self.assertIsNotNone(event.published_at)
 		feed_response = self.client.get(reverse("kalender_events"), {"start": "2026-01-01", "end": "2027-01-01"})
-		self.assertIn("Dinner together · alice, bob", [item["title"] for item in feed_response.json()["events"]])
+		published_event = next(item for item in feed_response.json()["events"] if item["title"] == "Dinner together · alice, bob")
+		self.assertEqual(published_event["extendedProps"]["creator"], "creator")
+		self.assertEqual(published_event["extendedProps"]["attendees"], "alice, bob")
+		self.assertEqual(published_event["extendedProps"]["notes"], "Bring the board games.")
 
 	def test_appointment_must_be_planned_two_days_ahead(self):
 		user = User.objects.create_user(username="alice", password="pw")

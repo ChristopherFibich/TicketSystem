@@ -13,6 +13,11 @@ class CalendarAppointmentForm(forms.Form):
         max_length=200,
         widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Descriptive title"}),
     )
+    notes = forms.CharField(
+        label="Notes",
+        required=False,
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": "Additional notes"}),
+    )
     starts_at = forms.DateTimeField(
         label="Start",
         input_formats=["%Y-%m-%dT%H:%M"],

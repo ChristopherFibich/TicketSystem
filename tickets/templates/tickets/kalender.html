@@ -29,6 +29,11 @@
               {{ appointment_form.title }}
               {{ appointment_form.title.errors }}
             </div>
+            <div class="mb-3">
+              <label class="form-label" for="{{ appointment_form.notes.id_for_label }}">Notes</label>
+              {{ appointment_form.notes }}
+              {{ appointment_form.notes.errors }}
+            </div>
             <div class="row g-2">
               <div class="col-12 col-md-6">
                 <label class="form-label" for="{{ appointment_form.starts_at.id_for_label }}">Start date and time</label>
@@ -53,6 +58,25 @@
             <button class="btn btn-primary" type="submit">Send invitations</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="eventDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" id="eventDetailsModalLabel">Event details</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-3">When</dt><dd class="col-sm-9" id="eventDetailsWhen"></dd>
+            <dt class="col-sm-3">Creator</dt><dd class="col-sm-9" id="eventDetailsCreator"></dd>
+            <dt class="col-sm-3">Attendees</dt><dd class="col-sm-9" id="eventDetailsAttendees"></dd>
+            <dt class="col-sm-3">Notes</dt><dd class="col-sm-9 text-break" id="eventDetailsNotes"></dd>
+          </dl>
+        </div>
       </div>
     </div>
   </div>
@@ -171,6 +195,20 @@
           if (calendar.view.type === 'dayGridMonth') {
             calendar.changeView('timeGridDay', info.dateStr);
           }
+        },
+        eventClick: (info) => {
+          const event = info.event;
+          const details = event.extendedProps;
+          const when = [event.start, event.end]
+            .filter(Boolean)
+            .map((value) => value.toLocaleString('de-DE'))
+            .join(' - ');
+          document.getElementById('eventDetailsModalLabel').textContent = event.title;
+          document.getElementById('eventDetailsWhen').textContent = when;
+          document.getElementById('eventDetailsCreator').textContent = details.creator || details.calendar || 'Not available';
+          document.getElementById('eventDetailsAttendees').textContent = details.attendees || 'Not available';
+          document.getElementById('eventDetailsNotes').textContent = details.notes || 'No notes';
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('eventDetailsModal')).show();
         },
         datesSet: (info) => {
           const modeByView = { timeGridDay: 'tag', timeGridWeek: 'woche', dayGridMonth: 'monat' };

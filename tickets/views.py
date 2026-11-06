@@ -624,6 +624,7 @@ def kalender(request: HttpRequest) -> HttpResponse:
 				else:
 					event = CalendarEvent.objects.create(
 						title=appointment_form.cleaned_data["title"],
+						notes=appointment_form.cleaned_data["notes"],
 						starts_at=starts_at,
 						ends_at=ends_at,
 						created_by=request.user,
@@ -632,6 +633,7 @@ def kalender(request: HttpRequest) -> HttpResponse:
 					attendee_names = ", ".join(user.username for user in attendees)
 					description = (
 						"Event invitation\n\n"
+						f"Notes: {event.notes or '(none)'}\n"
 						f"Start: {timezone.localtime(starts_at).strftime('%Y-%m-%d %H:%M')}\n"
 						f"End: {timezone.localtime(ends_at).strftime('%Y-%m-%d %H:%M')}\n"
 						f"Attending users: {attendee_names}\n\n"
@@ -852,7 +854,12 @@ def kalender_events(request: HttpRequest) -> JsonResponse:
 				"title": f"{event.title} · {attendees}",
 				"start": timezone.localtime(event.starts_at).isoformat(),
 				"end": timezone.localtime(event.ends_at).isoformat(),
-				"extendedProps": {"internal": True, "attendees": attendees},
+				"extendedProps": {
+					"internal": True,
+					"attendees": attendees,
+					"creator": event.created_by.username,
+					"notes": event.notes,
+				},
 			}
 		)
 	errors = []

@@ -286,6 +286,7 @@ class TicketChecklistItem(models.Model):
 
 class CalendarEvent(models.Model):
 	title = models.CharField(max_length=200)
+	notes = models.TextField(blank=True)
 	starts_at = models.DateTimeField(db_index=True)
 	ends_at = models.DateTimeField()
 	created_by = models.ForeignKey(
