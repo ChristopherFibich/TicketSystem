@@ -311,17 +311,27 @@ class GraphsAccessTests(TestCase):
 
 
 class KalenderViewTests(TestCase):
-	def test_kalender_shows_month_mode_and_scheduled_ticket(self):
+	def test_kalender_is_empty_and_uses_day_mode(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)
-		ticket = Ticket.objects.create(title="Water plants", scheduled_for_date=date(2026, 11, 6))
+		Ticket.objects.create(title="Water plants", scheduled_for_date=date(2026, 11, 6))
 
 		response = self.client.get(reverse("kalender"), {"mode": "tag", "date": "2026-11-06"})
 
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Tag")
-		self.assertContains(response, ticket.title)
-		self.assertContains(response, 'href="?mode=woche&date=2026-11-06"')
+		self.assertContains(response, "timeGridDay")
+		self.assertNotContains(response, "Water plants")
+
+	def test_kalender_maps_week_and_month_modes(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+
+		week_response = self.client.get(reverse("kalender"), {"mode": "woche"})
+		month_response = self.client.get(reverse("kalender"), {"mode": "monat"})
+
+		self.assertContains(week_response, "timeGridWeek")
+		self.assertContains(month_response, "dayGridMonth")
 
 	def test_kalender_requires_login(self):
 		response = self.client.get(reverse("kalender"))

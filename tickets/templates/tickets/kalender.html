@@ -3,67 +3,80 @@
 {% block title %}Kalender{% endblock %}
 
 {% block content %}
-  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-    <div>
-      <h1 class="h4 mb-1">Kalender</h1>
-      <div class="text-body-secondary">{{ selected_date|date:"F Y" }}</div>
-    </div>
-    <div class="btn-group" role="group" aria-label="Kalenderansicht">
-      <a class="btn btn-sm {% if mode == 'tag' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=tag&date={{ selected_date|date:'Y-m-d' }}">Tag</a>
-      <a class="btn btn-sm {% if mode == 'woche' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=woche&date={{ selected_date|date:'Y-m-d' }}">Woche</a>
-      <a class="btn btn-sm {% if mode == 'monat' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=monat&date={{ selected_date|date:'Y-m-d' }}">Monat</a>
-    </div>
-  </div>
-
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <a class="btn btn-sm btn-outline-secondary" href="?mode={{ mode }}&date={{ previous_date|date:'Y-m-d' }}" aria-label="Vorheriger Zeitraum">&larr;</a>
-    <a class="btn btn-sm btn-outline-secondary" href="?mode={{ mode }}&date={% now 'Y-m-d' %}">Heute</a>
-    <a class="btn btn-sm btn-outline-secondary" href="?mode={{ mode }}&date={{ next_date|date:'Y-m-d' }}" aria-label="Nächster Zeitraum">&rarr;</a>
-  </div>
-
-  {% if mode != 'tag' %}
-    <div class="calendar-weekdays" aria-hidden="true">
-      <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
-    </div>
-  {% endif %}
-
-  <div class="calendar-grid calendar-grid-{{ mode }}">
-    {% for day in days %}
-      <section class="calendar-day {% if day.is_today %}calendar-day-today{% endif %} {% if mode == 'monat' and not day.is_current_month %}calendar-day-muted{% endif %}">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <a class="calendar-date" href="?mode=tag&date={{ day.date|date:'Y-m-d' }}">{{ day.date|date:'j' }}</a>
-          {% if day.is_today %}<span class="badge text-bg-primary">Heute</span>{% endif %}
-        </div>
-        <div class="d-grid gap-1">
-          {% for ticket in day.tickets %}
-            <a class="calendar-ticket text-decoration-none" href="{% url 'ticket_detail' ticket.pk %}">
-              <span class="fw-semibold">{{ ticket.title }}</span>
-              {% if ticket.assignee %}<span class="small text-body-secondary">{{ ticket.assignee.username }}</span>{% endif %}
-            </a>
-          {% empty %}
-            <span class="small text-body-secondary">Keine Tickets</span>
-          {% endfor %}
-        </div>
-      </section>
-    {% endfor %}
+  <div class="calendar-shell">
+    <div id="calendar" aria-label="Kalender"></div>
   </div>
 
   <style>
-    .calendar-weekdays,
-    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .5rem; }
-    .calendar-weekdays { color: var(--bs-secondary-color); font-size: .8rem; font-weight: 600; margin-bottom: .35rem; text-align: center; }
-    .calendar-grid-tag { grid-template-columns: minmax(0, 1fr); }
-    .calendar-grid-woche .calendar-day { min-height: 16rem; }
-    .calendar-grid-monat .calendar-day { min-height: 8rem; }
-    .calendar-day { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .6rem; }
-    .calendar-day-today { border-color: var(--bs-primary); box-shadow: inset 0 0 0 1px var(--bs-primary); }
-    .calendar-day-muted { opacity: .55; }
-    .calendar-date { color: inherit; font-weight: 600; text-decoration: none; }
-    .calendar-ticket { background: var(--bs-body-bg); border-left: 3px solid var(--bs-primary); border-radius: .25rem; color: inherit; display: flex; flex-direction: column; padding: .3rem .4rem; }
+    .calendar-shell { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .75rem; overflow: hidden; }
+    #calendar { min-height: 42rem; padding: .75rem; }
+    .fc { --fc-border-color: var(--bs-border-color); --fc-button-bg-color: var(--bs-primary); --fc-button-border-color: var(--bs-primary); --fc-button-hover-bg-color: var(--bs-primary); --fc-button-hover-border-color: var(--bs-primary); --fc-today-bg-color: rgba(var(--bs-primary-rgb), .08); font-family: inherit; }
+    .fc .fc-toolbar-title { font-size: 1.15rem; font-weight: 600; }
+    .fc .fc-button { border-radius: .4rem; box-shadow: none; font-size: .875rem; font-weight: 500; }
+    .fc .fc-button-primary:not(:disabled).fc-button-active { background: var(--bs-primary); border-color: var(--bs-primary); }
+    .fc .fc-daygrid-day-number, .fc .fc-col-header-cell-cushion { color: var(--bs-body-color); text-decoration: none; }
+    .fc .fc-col-header-cell-cushion { white-space: nowrap; }
+    .fc .fc-day-today .fc-daygrid-day-number { align-items: center; background: var(--bs-primary); border-radius: 50%; color: #fff; display: flex; height: 2rem; justify-content: center; margin: .25rem; width: 2rem; }
+    .fc .fc-timegrid-now-indicator-line { border-color: var(--bs-danger); }
+    .fc .fc-timegrid-now-indicator-arrow { border-bottom-color: var(--bs-danger); border-top-color: var(--bs-danger); }
     @media (max-width: 767.98px) {
-      .calendar-grid-woche, .calendar-grid-monat { grid-template-columns: repeat(1, minmax(0, 1fr)); }
-      .calendar-weekdays { display: none; }
-      .calendar-grid-woche .calendar-day, .calendar-grid-monat .calendar-day { min-height: 6rem; }
+      #calendar { min-height: 34rem; padding: .35rem; }
+      .fc .fc-toolbar { align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
+      .fc .fc-toolbar-title { font-size: 1rem; }
+      .fc .fc-toolbar-chunk { display: flex; gap: .25rem; }
     }
   </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.15/locales-all.global.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const calendarElement = document.getElementById('calendar');
+      const calendar = new FullCalendar.Calendar(calendarElement, {
+        initialView: '{{ calendar_view }}',
+        initialDate: '{{ selected_date|date:"Y-m-d" }}',
+        locale: 'de',
+        firstDay: 1,
+        dayHeaderFormat: window.matchMedia('(max-width: 767.98px)').matches
+          ? { weekday: 'short' }
+          : { weekday: 'short', day: 'numeric', month: 'numeric' },
+        nowIndicator: true,
+        navLinks: true,
+        editable: false,
+        selectable: false,
+        dayMaxEvents: true,
+        scrollTime: '08:00:00',
+        slotMinTime: '06:00:00',
+        slotMaxTime: '23:00:00',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'tag,woche,monat',
+        },
+        buttonText: {
+          today: 'Heute',
+          month: 'Monat',
+          week: 'Woche',
+          day: 'Tag',
+        },
+        customButtons: {
+          tag: { text: 'Tag', click: () => calendar.changeView('timeGridDay') },
+          woche: { text: 'Woche', click: () => calendar.changeView('timeGridWeek') },
+          monat: { text: 'Monat', click: () => calendar.changeView('dayGridMonth') },
+        },
+        dateClick: (info) => {
+          if (calendar.view.type === 'dayGridMonth') {
+            calendar.changeView('timeGridDay', info.dateStr);
+          }
+        },
+        datesSet: (info) => {
+          const modeByView = { timeGridDay: 'tag', timeGridWeek: 'woche', dayGridMonth: 'monat' };
+          const mode = modeByView[info.view.type] || 'monat';
+          const dateValue = calendar.getDate().toISOString().slice(0, 10);
+          window.history.replaceState({}, '', `?mode=${mode}&date=${dateValue}`);
+        },
+      });
+      calendar.render();
+    });
+  </script>
 {% endblock %}
