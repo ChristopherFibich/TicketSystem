@@ -284,6 +284,46 @@ class TicketChecklistItem(models.Model):
 		return f"{self.ticket}: {self.text}"
 
 
+class CalendarEvent(models.Model):
+	title = models.CharField(max_length=200)
+	starts_at = models.DateTimeField(db_index=True)
+	ends_at = models.DateTimeField()
+	created_by = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name="calendar_events_created",
+	)
+	published_at = models.DateTimeField(null=True, blank=True)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ["starts_at", "id"]
+
+	def __str__(self) -> str:
+		return self.title
+
+
+class CalendarInvitation(models.Model):
+	class Response(models.TextChoices):
+		PENDING = "PENDING", "Pending"
+		ACCEPTED = "ACCEPTED", "Accepted"
+		DECLINED = "DECLINED", "Declined"
+
+	event = models.ForeignKey(CalendarEvent, on_delete=models.CASCADE, related_name="invitations")
+	user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="calendar_invitations")
+	ticket = models.OneToOneField(Ticket, on_delete=models.CASCADE, related_name="calendar_invitation")
+	response = models.CharField(max_length=10, choices=Response.choices, default=Response.PENDING)
+	responded_at = models.DateTimeField(null=True, blank=True)
+
+	class Meta:
+		constraints = [
+			models.UniqueConstraint(fields=["event", "user"], name="unique_calendar_invitation_user"),
+		]
+
+	def __str__(self) -> str:
+		return f"{self.event} -> {self.user} ({self.response})"
+
+
 class Completion(models.Model):
 	ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="completions")
 	completed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="completions")

@@ -25,7 +25,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import CalendarSubscriptionForm, TicketCreateForm, TicketTemplateForm, TicketUpdateForm
+from .forms import CalendarAppointmentForm, CalendarSubscriptionForm, TicketCreateForm, TicketTemplateForm, TicketUpdateForm
 from .access import can_view_graphs
 from .models import (
 	Completion,
@@ -35,6 +35,8 @@ from .models import (
 	DashboardWidget,
 	DashboardWidgetKind,
 	CalendarSubscription,
+	CalendarEvent,
+	CalendarInvitation,
 	AssignmentMode,
 	FeedTime,
 	PetFeedStatus,
@@ -225,7 +227,6 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 	now = timezone.now()
 	q = (request.GET.get("q") or "").strip()
 	show_done_param = (request.GET.get("show_done") or "").strip()
-	# My tickets historically showed DONE; default to showing it.
 	show_done = True if show_done_param == "" else show_done_param in {"1", "true", "yes", "on"}
 	tickets = (
 		Ticket.objects.select_related("assignee", "template")
@@ -257,6 +258,22 @@ def my_tickets(request: HttpRequest) -> HttpResponse:
 			ticket.age_days = None
 
 		grouped[ticket.status].append(ticket)
+
+	sections = []
+	statuses = [TicketStatus.NEW, TicketStatus.DOING, TicketStatus.DONE] if show_done else [TicketStatus.NEW, TicketStatus.DOING]
+	for status in statuses:
+		items = grouped.get(status, [])
+		sections.append({"status": status, "label": status.label, "tickets": items, "count": len(items)})
+
+	return render(
+		request,
+		"tickets/my_tickets.html",
+		{
+			"sections": sections,
+			"q": q,
+			"show_done": show_done,
+		},
+	)
 
 	sections = []
 	statuses = [TicketStatus.NEW, TicketStatus.DOING, TicketStatus.DONE] if show_done else [TicketStatus.NEW, TicketStatus.DOING]
@@ -455,6 +472,7 @@ def ticket_create(request: HttpRequest) -> HttpResponse:
 @login_required
 def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 	ticket = get_object_or_404(Ticket.objects.select_related("assignee", "template").prefetch_related("checklist_items"), pk=pk)
+	calendar_invitation = CalendarInvitation.objects.select_related("event").filter(ticket=ticket, user=request.user).first()
 	existing_completion_user_ids = list(ticket.completions.values_list("completed_by_id", flat=True))
 	back_url_name = "todo_tickets"
 	if ticket.tags.filter(name__iexact="Daily").exists() or ticket.tags.filter(name__iexact="Weekly").exists() or ticket.tags.filter(name__iexact="Monthly").exists():
@@ -467,6 +485,26 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 		back_url_name = "haushalt_tickets"
 
 	if request.method == "POST":
+		if calendar_invitation and ("accept_event" in request.POST or "decline_event" in request.POST):
+			if calendar_invitation.response == CalendarInvitation.Response.PENDING:
+				calendar_invitation.response = (
+					CalendarInvitation.Response.ACCEPTED
+					if "accept_event" in request.POST
+					else CalendarInvitation.Response.DECLINED
+				)
+				calendar_invitation.responded_at = timezone.now()
+				calendar_invitation.save(update_fields=["response", "responded_at"])
+				ticket.status = TicketStatus.DONE
+				ticket.completed_at = timezone.now()
+				ticket.save(update_fields=["status", "completed_at", "updated_at"])
+				if calendar_invitation.response == CalendarInvitation.Response.ACCEPTED:
+					event = calendar_invitation.event
+					if event.published_at is None:
+						event.published_at = timezone.now()
+						event.save(update_fields=["published_at"])
+			messages.success(request, "Event response saved.")
+			return redirect("ticket_detail", pk=ticket.pk)
+
 		if "add_checklist_item" in request.POST:
 			text = (request.POST.get("checklist_text") or "").strip()
 			if text:
@@ -553,6 +591,7 @@ def ticket_detail(request: HttpRequest, pk: int) -> HttpResponse:
 			"completions": completions,
 			"share_candidates": share_candidates,
 			"checklist_items": checklist_items,
+			"calendar_invitation": calendar_invitation,
 			"back_url_name": back_url_name,
 		},
 	)
@@ -570,8 +609,45 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def kalender(request: HttpRequest) -> HttpResponse:
+	appointment_form = CalendarAppointmentForm()
+	subscription_form = CalendarSubscriptionForm()
 	if request.method == "POST":
-		if request.POST.get("action") == "delete_subscription":
+		action = request.POST.get("action")
+		if action == "create_appointment":
+			appointment_form = CalendarAppointmentForm(request.POST)
+			if appointment_form.is_valid():
+				starts_at = appointment_form.cleaned_data["starts_at"]
+				ends_at = appointment_form.cleaned_data["ends_at"]
+				conflicts = _calendar_conflicts(starts_at, ends_at)
+				if conflicts:
+					appointment_form.add_error(None, "This time conflicts with: " + ", ".join(conflicts))
+				else:
+					event = CalendarEvent.objects.create(
+						title=appointment_form.cleaned_data["title"],
+						starts_at=starts_at,
+						ends_at=ends_at,
+						created_by=request.user,
+					)
+					attendees = list(appointment_form.cleaned_data["attendees"])
+					attendee_names = ", ".join(user.username for user in attendees)
+					description = (
+						"Event invitation\n\n"
+						f"Start: {timezone.localtime(starts_at).strftime('%Y-%m-%d %H:%M')}\n"
+						f"End: {timezone.localtime(ends_at).strftime('%Y-%m-%d %H:%M')}\n"
+						f"Attending users: {attendee_names}\n\n"
+						"Accept or decline this invitation. The event is published after the first acceptance."
+					)
+					for attendee in attendees:
+						ticket = Ticket.objects.create(
+							title=f"Event invitation: {event.title}",
+							description=description,
+							assignee=attendee,
+							created_by=request.user,
+						)
+						CalendarInvitation.objects.create(event=event, user=attendee, ticket=ticket)
+					messages.success(request, "Event invitations created.")
+					return redirect("kalender")
+		elif action == "delete_subscription":
 			subscription = get_object_or_404(
 				CalendarSubscription,
 				pk=request.POST.get("subscription_id"),
@@ -580,24 +656,22 @@ def kalender(request: HttpRequest) -> HttpResponse:
 			subscription.delete()
 			messages.success(request, "iCal subscription removed.")
 			return redirect("kalender")
-
-		form = CalendarSubscriptionForm(request.POST)
-		if form.is_valid():
-			subscription = form.save(commit=False)
-			subscription.user = request.user
-			try:
-				_validate_calendar_url(subscription.url)
-			except ValueError as exc:
-				form.add_error("url", str(exc))
-			else:
-				if CalendarSubscription.objects.filter(user=request.user, url=subscription.url).exists():
-					form.add_error("url", "This calendar is already subscribed.")
+		else:
+			subscription_form = CalendarSubscriptionForm(request.POST)
+			if subscription_form.is_valid():
+				subscription = subscription_form.save(commit=False)
+				subscription.user = request.user
+				try:
+					_validate_calendar_url(subscription.url)
+				except ValueError as exc:
+					subscription_form.add_error("url", str(exc))
 				else:
-					subscription.save()
-					messages.success(request, "iCal subscription added.")
-					return redirect("kalender")
-	else:
-		form = CalendarSubscriptionForm()
+					if CalendarSubscription.objects.filter(url=subscription.url).exists():
+						subscription_form.add_error("url", "This calendar is already subscribed.")
+					else:
+						subscription.save()
+						messages.success(request, "iCal subscription added.")
+						return redirect("kalender")
 
 	mode = (request.GET.get("mode") or "monat").lower()
 	if mode not in {"tag", "woche", "monat"}:
@@ -617,10 +691,36 @@ def kalender(request: HttpRequest) -> HttpResponse:
 			"mode": mode,
 			"selected_date": selected_date,
 			"calendar_view": calendar_view,
-			"subscription_form": form,
+			"subscription_form": subscription_form,
+			"appointment_form": appointment_form,
 			"subscriptions": CalendarSubscription.objects.all(),
 		},
 	)
+
+
+def _calendar_conflicts(starts_at: datetime, ends_at: datetime) -> list[str]:
+	conflicts = list(
+		CalendarEvent.objects.filter(starts_at__lt=ends_at, ends_at__gt=starts_at).values_list("title", flat=True)
+	)
+	start_date = timezone.localdate(starts_at) - timedelta(days=1)
+	end_date = timezone.localdate(ends_at) + timedelta(days=1)
+	for subscription in CalendarSubscription.objects.all():
+		try:
+			for event in _fetch_ical_events(subscription, start_date, end_date):
+				event_start = datetime.fromisoformat(str(event["start"]))
+				event_end = datetime.fromisoformat(str(event.get("end") or event["start"]))
+				if event.get("allDay"):
+					event_start = timezone.make_aware(datetime.combine(event_start.date(), datetime.min.time()))
+					event_end = timezone.make_aware(datetime.combine(event_end.date(), datetime.min.time()))
+				if timezone.is_naive(event_start):
+					event_start = timezone.make_aware(event_start)
+				if timezone.is_naive(event_end):
+					event_end = timezone.make_aware(event_end)
+				if event_start < ends_at and event_end > starts_at:
+					conflicts.append(subscription.name)
+		except Exception:
+			conflicts.append(f"{subscription.name} (unavailable)")
+	return sorted(set(conflicts))
 
 
 def _validate_calendar_url(url: str) -> str:
@@ -736,7 +836,25 @@ def kalender_events(request: HttpRequest) -> JsonResponse:
 	except ValueError:
 		end_date = timezone.localdate() + timedelta(days=366)
 
+	start_boundary = timezone.make_aware(datetime.combine(start_date, datetime.min.time()))
+	end_boundary = timezone.make_aware(datetime.combine(end_date, datetime.min.time()))
 	events = []
+	internal_events = CalendarEvent.objects.filter(
+		published_at__isnull=False,
+		starts_at__lt=end_boundary,
+		ends_at__gt=start_boundary,
+	).prefetch_related("invitations__user")
+	for event in internal_events:
+		attendees = ", ".join(invitation.user.username for invitation in event.invitations.all())
+		events.append(
+			{
+				"id": f"internal-{event.pk}",
+				"title": f"{event.title} · {attendees}",
+				"start": timezone.localtime(event.starts_at).isoformat(),
+				"end": timezone.localtime(event.ends_at).isoformat(),
+				"extendedProps": {"internal": True, "attendees": attendees},
+			}
+		)
 	errors = []
 	for subscription in CalendarSubscription.objects.all():
 		try:

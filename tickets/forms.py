@@ -1,7 +1,54 @@
+from datetime import timedelta
+
 from django import forms
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 from .models import CalendarSubscription, Ticket, TicketTemplate
+
+
+class CalendarAppointmentForm(forms.Form):
+    title = forms.CharField(
+        label="Title",
+        max_length=200,
+        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Descriptive title"}),
+    )
+    starts_at = forms.DateTimeField(
+        label="Start",
+        input_formats=["%Y-%m-%dT%H:%M"],
+        widget=forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"class": "form-control", "type": "datetime-local"}),
+    )
+    ends_at = forms.DateTimeField(
+        label="End",
+        input_formats=["%Y-%m-%dT%H:%M"],
+        widget=forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"class": "form-control", "type": "datetime-local"}),
+    )
+    attendees = forms.ModelMultipleChoiceField(
+        label="Attending users",
+        queryset=get_user_model().objects.none(),
+        required=True,
+        widget=forms.SelectMultiple(attrs={"class": "form-select", "size": 5}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["attendees"].queryset = get_user_model().objects.filter(is_active=True).order_by("username", "id")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        starts_at = cleaned_data.get("starts_at")
+        ends_at = cleaned_data.get("ends_at")
+        if starts_at and timezone.is_naive(starts_at):
+            starts_at = timezone.make_aware(starts_at, timezone.get_current_timezone())
+            cleaned_data["starts_at"] = starts_at
+        if ends_at and timezone.is_naive(ends_at):
+            ends_at = timezone.make_aware(ends_at, timezone.get_current_timezone())
+            cleaned_data["ends_at"] = ends_at
+        if starts_at and starts_at < timezone.now() + timedelta(days=2):
+            self.add_error("starts_at", "Appointments must be planned at least two days in advance.")
+        if starts_at and ends_at and ends_at <= starts_at:
+            self.add_error("ends_at", "The end must be after the start.")
+        return cleaned_data
 
 
 class CalendarSubscriptionForm(forms.ModelForm):

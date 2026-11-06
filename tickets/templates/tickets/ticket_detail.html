@@ -17,6 +17,19 @@
   </div>
 
   <div class="card card-body mb-3">
+    {% if calendar_invitation %}
+      <div class="alert alert-info mb-3">
+        <div class="fw-semibold">Event invitation</div>
+        <div>{{ calendar_invitation.event.title }}</div>
+        <div class="small">Your response: {{ calendar_invitation.get_response_display }}</div>
+        {% if calendar_invitation.response == 'PENDING' %}
+          <div class="d-flex gap-2 mt-2">
+            <button class="btn btn-sm btn-success" type="submit" form="ticket-edit-form" name="accept_event" value="1">Accept</button>
+            <button class="btn btn-sm btn-outline-danger" type="submit" form="ticket-edit-form" name="decline_event" value="1">Decline</button>
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
     <div class="fw-semibold mb-2">Checklist</div>
     {% if checklist_items %}
       <div class="vstack gap-2 mb-3">
@@ -50,7 +63,7 @@
     </form>
   </div>
 
-  <form method="post" class="card card-body">
+  <form method="post" class="card card-body" id="ticket-edit-form">
     {% csrf_token %}
     {{ form.non_field_errors }}
 

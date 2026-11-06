@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from django.contrib import admin
@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from .admin import TicketTemplateAdmin
 from .forms import TicketUpdateForm
-from .models import AssignmentMode, CalendarSubscription, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserActivity, UserAvailability, UserAvailabilityEvent
+from .models import AssignmentMode, CalendarEvent, CalendarInvitation, CalendarSubscription, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserActivity, UserAvailability, UserAvailabilityEvent
 
 
 User = get_user_model()
@@ -348,6 +348,88 @@ class KalenderViewTests(TestCase):
 
 		self.assertContains(response, "Shared")
 		self.assertNotContains(response, 'value="delete_subscription"')
+
+	def test_appointment_creates_invitation_tickets_and_publishes_on_acceptance(self):
+		creator = User.objects.create_user(username="creator", password="pw")
+		alice = User.objects.create_user(username="alice", password="pw")
+		bob = User.objects.create_user(username="bob", password="pw")
+		self.client.force_login(creator)
+		starts_at = (timezone.localtime(timezone.now()) + timedelta(days=3)).replace(minute=0, second=0, microsecond=0)
+		ends_at = starts_at + timedelta(hours=2)
+
+		response = self.client.post(
+			reverse("kalender"),
+			{
+				"action": "create_appointment",
+				"title": "Dinner together",
+				"starts_at": starts_at.strftime("%Y-%m-%dT%H:%M"),
+				"ends_at": ends_at.strftime("%Y-%m-%dT%H:%M"),
+				"attendees": [alice.pk, bob.pk],
+			},
+		)
+
+		self.assertRedirects(response, reverse("kalender"))
+		event = CalendarEvent.objects.get(title="Dinner together")
+		invitations = list(CalendarInvitation.objects.filter(event=event).select_related("ticket", "user"))
+		self.assertEqual(len(invitations), 2)
+		self.assertIsNone(event.published_at)
+		self.assertIn("alice", invitations[0].ticket.description)
+		self.assertIn("bob", invitations[0].ticket.description)
+
+		alice_invitation = next(invitation for invitation in invitations if invitation.user == alice)
+		self.client.force_login(alice)
+		response = self.client.post(reverse("ticket_detail", args=[alice_invitation.ticket_id]), {"accept_event": "1"})
+
+		self.assertRedirects(response, reverse("ticket_detail", args=[alice_invitation.ticket_id]))
+		event.refresh_from_db()
+		self.assertIsNotNone(event.published_at)
+		feed_response = self.client.get(reverse("kalender_events"), {"start": "2026-01-01", "end": "2027-01-01"})
+		self.assertIn("Dinner together · alice, bob", [item["title"] for item in feed_response.json()["events"]])
+
+	def test_appointment_must_be_planned_two_days_ahead(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		starts_at = timezone.localtime(timezone.now()) + timedelta(days=1)
+		response = self.client.post(
+			reverse("kalender"),
+			{
+				"action": "create_appointment",
+				"title": "Too soon",
+				"starts_at": starts_at.strftime("%Y-%m-%dT%H:%M"),
+				"ends_at": (starts_at + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M"),
+				"attendees": [user.pk],
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "at least two days in advance")
+		self.assertFalse(CalendarEvent.objects.exists())
+
+	def test_appointment_cannot_overlap_existing_internal_event(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		starts_at = (timezone.localtime(timezone.now()) + timedelta(days=3)).replace(minute=0, second=0, microsecond=0)
+		CalendarEvent.objects.create(
+			title="Existing event",
+			starts_at=starts_at,
+			ends_at=starts_at + timedelta(hours=2),
+			created_by=user,
+		)
+
+		response = self.client.post(
+			reverse("kalender"),
+			{
+				"action": "create_appointment",
+				"title": "Overlapping event",
+				"starts_at": (starts_at + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M"),
+				"ends_at": (starts_at + timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M"),
+				"attendees": [user.pk],
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Existing event")
+		self.assertEqual(CalendarEvent.objects.filter(title="Overlapping event").count(), 0)
 
 	@patch("tickets.views.urlopen")
 	def test_event_names_get_requested_colors(self, mocked_urlopen):
