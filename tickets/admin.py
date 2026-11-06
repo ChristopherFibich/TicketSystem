@@ -9,6 +9,7 @@ from django.utils.html import format_html, format_html_join
 
 from .models import (
 	Completion,
+	CalendarSubscription,
 	DashboardToggle,
 	DashboardToggleGroup,
 	DashboardToggleStatus,
@@ -19,6 +20,12 @@ from .models import (
 	TicketTemplateEligibility,
 	WeightEntry,
 )
+
+
+@admin.register(CalendarSubscription)
+class CalendarSubscriptionAdmin(admin.ModelAdmin):
+	list_display = ["name", "user", "url", "created_at"]
+	search_fields = ["name", "url", "user__username"]
 from .scheduling import next_scheduled_for
 
 

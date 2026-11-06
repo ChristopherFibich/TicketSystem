@@ -7,6 +7,45 @@
     <div id="calendar" aria-label="Kalender"></div>
   </div>
 
+  <div class="calendar-subscriptions mt-3">
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+      <h2 class="h6 mb-0">iCal calendars</h2>
+      <span class="small text-body-secondary">Read-only subscriptions</span>
+    </div>
+    <form method="post" class="row g-2 align-items-end">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_subscription">
+      <div class="col-12 col-md-3">
+        <label class="form-label small" for="{{ subscription_form.name.id_for_label }}">Name</label>
+        {{ subscription_form.name }}
+      </div>
+      <div class="col-12 col-md-7">
+        <label class="form-label small" for="{{ subscription_form.url.id_for_label }}">iCal link</label>
+        {{ subscription_form.url }}
+      </div>
+      <div class="col-12 col-md-2 d-grid">
+        <button class="btn btn-primary" type="submit">Add calendar</button>
+      </div>
+      {% for error in subscription_form.url.errors %}<div class="col-12 text-danger small">{{ error }}</div>{% endfor %}
+      {% for error in subscription_form.name.errors %}<div class="col-12 text-danger small">{{ error }}</div>{% endfor %}
+    </form>
+    {% if subscriptions %}
+      <div class="list-group mt-3">
+        {% for subscription in subscriptions %}
+          <div class="list-group-item d-flex align-items-center justify-content-between gap-2">
+            <div class="text-truncate"><span class="fw-semibold">{{ subscription.name }}</span><span class="small text-body-secondary ms-2">{{ subscription.url }}</span></div>
+            <form method="post" class="m-0">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_subscription">
+              <input type="hidden" name="subscription_id" value="{{ subscription.pk }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+            </form>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+
   <style>
     .calendar-shell { background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .75rem; overflow: hidden; }
     #calendar { min-height: 42rem; padding: .75rem; }
@@ -19,6 +58,7 @@
     .fc .fc-day-today .fc-daygrid-day-number { align-items: center; background: var(--bs-primary); border-radius: 50%; color: #fff; display: flex; height: 2rem; justify-content: center; margin: .25rem; width: 2rem; }
     .fc .fc-timegrid-now-indicator-line { border-color: var(--bs-danger); }
     .fc .fc-timegrid-now-indicator-arrow { border-bottom-color: var(--bs-danger); border-top-color: var(--bs-danger); }
+    .calendar-subscriptions { border-top: 1px solid var(--bs-border-color); padding-top: 1rem; }
     @media (max-width: 767.98px) {
       #calendar { min-height: 34rem; padding: .35rem; }
       .fc .fc-toolbar { align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
@@ -41,6 +81,7 @@
           ? { weekday: 'short' }
           : { weekday: 'short', day: 'numeric', month: 'numeric' },
         nowIndicator: true,
+        events: '{% url "kalender_events" %}',
         navLinks: true,
         editable: false,
         selectable: false,

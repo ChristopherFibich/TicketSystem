@@ -490,3 +490,23 @@ class ShoppingItem(models.Model):
 
 	def __str__(self) -> str:
 		return self.text
+
+
+class CalendarSubscription(models.Model):
+	user = models.ForeignKey(
+		settings.AUTH_USER_MODEL,
+		on_delete=models.CASCADE,
+		related_name="calendar_subscriptions",
+	)
+	name = models.CharField(max_length=100)
+	url = models.URLField(max_length=1000)
+	created_at = models.DateTimeField(auto_now_add=True)
+
+	class Meta:
+		ordering = ["name", "id"]
+		constraints = [
+			models.UniqueConstraint(fields=["user", "url"], name="unique_calendar_subscription_url"),
+		]
+
+	def __str__(self) -> str:
+		return f"{self.name} ({self.user})"

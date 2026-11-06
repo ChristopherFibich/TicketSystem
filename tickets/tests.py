@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from .admin import TicketTemplateAdmin
 from .forms import TicketUpdateForm
-from .models import AssignmentMode, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserActivity, UserAvailability, UserAvailabilityEvent
+from .models import AssignmentMode, CalendarSubscription, RecurrenceFrequency, Tag, Ticket, TicketChecklistItem, TicketPriority, TicketStatus, TicketTemplate, UserActivity, UserAvailability, UserAvailabilityEvent
 
 
 User = get_user_model()
@@ -337,6 +337,39 @@ class KalenderViewTests(TestCase):
 		response = self.client.get(reverse("kalender"))
 
 		self.assertRedirects(response, f"{reverse('login')}?next={reverse('kalender')}")
+
+	@patch("tickets.views.urlopen")
+	def test_webcal_subscription_is_saved_and_events_are_returned(self, mocked_urlopen):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		response = self.client.post(
+			reverse("kalender"),
+			{"action": "add_subscription", "name": "Work", "url": "webcal://calendar.example/work.ics"},
+		)
+
+		self.assertRedirects(response, reverse("kalender"))
+		subscription = CalendarSubscription.objects.get(user=user)
+		self.assertEqual(subscription.url, "https://calendar.example/work.ics")
+
+		feed = b"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:meeting-1
+DTSTART:20261106T090000Z
+DTEND:20261106T100000Z
+SUMMARY:Team meeting
+END:VEVENT
+END:VCALENDAR
+"""
+		mocked_urlopen.return_value.__enter__.return_value.read.return_value = feed
+		response = self.client.get(
+			reverse("kalender_events"),
+			{"start": "2026-11-01", "end": "2026-12-01"},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json()["events"][0]["title"], "Team meeting")
+		self.assertEqual(response.json()["errors"], [])
 
 
 class ScoreboardGraphTests(TestCase):

@@ -1,7 +1,9 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+import ipaddress
 import json
 import re
 import shutil
+from urllib.parse import urlsplit
 import subprocess
 import threading
 from pathlib import Path
@@ -12,6 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib import messages
 from django.db.models import Avg, Count, Q, Sum
 from django.db import OperationalError, ProgrammingError, transaction
 from django.db.models.functions import TruncDate, TruncMonth, TruncWeek
@@ -22,7 +25,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import TicketCreateForm, TicketTemplateForm, TicketUpdateForm
+from .forms import CalendarSubscriptionForm, TicketCreateForm, TicketTemplateForm, TicketUpdateForm
 from .access import can_view_graphs
 from .models import (
 	Completion,
@@ -31,6 +34,7 @@ from .models import (
 	DashboardToggleStatus,
 	DashboardWidget,
 	DashboardWidgetKind,
+	CalendarSubscription,
 	AssignmentMode,
 	FeedTime,
 	PetFeedStatus,
@@ -566,6 +570,35 @@ def all_tickets(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def kalender(request: HttpRequest) -> HttpResponse:
+	if request.method == "POST":
+		if request.POST.get("action") == "delete_subscription":
+			subscription = get_object_or_404(
+				CalendarSubscription,
+				pk=request.POST.get("subscription_id"),
+				user=request.user,
+			)
+			subscription.delete()
+			messages.success(request, "iCal subscription removed.")
+			return redirect("kalender")
+
+		form = CalendarSubscriptionForm(request.POST)
+		if form.is_valid():
+			subscription = form.save(commit=False)
+			subscription.user = request.user
+			try:
+				_validate_calendar_url(subscription.url)
+			except ValueError as exc:
+				form.add_error("url", str(exc))
+			else:
+				if CalendarSubscription.objects.filter(user=request.user, url=subscription.url).exists():
+					form.add_error("url", "This calendar is already subscribed.")
+				else:
+					subscription.save()
+					messages.success(request, "iCal subscription added.")
+					return redirect("kalender")
+	else:
+		form = CalendarSubscriptionForm()
+
 	mode = (request.GET.get("mode") or "monat").lower()
 	if mode not in {"tag", "woche", "monat"}:
 		mode = "monat"
@@ -584,8 +617,98 @@ def kalender(request: HttpRequest) -> HttpResponse:
 			"mode": mode,
 			"selected_date": selected_date,
 			"calendar_view": calendar_view,
+			"subscription_form": form,
+			"subscriptions": CalendarSubscription.objects.filter(user=request.user),
 		},
 	)
+
+
+def _validate_calendar_url(url: str) -> str:
+	if url.lower().startswith("webcal://"):
+		url = "https://" + url[9:]
+	parsed = urlsplit(url)
+	if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+		raise ValueError("Only http, https, and webcal links are supported.")
+	if parsed.username or parsed.password:
+		raise ValueError("Calendar links may not contain embedded credentials.")
+	hostname = parsed.hostname.lower()
+	if hostname in {"localhost", "localhost.localdomain"}:
+		raise ValueError("Local calendar links are not supported.")
+	try:
+		address = ipaddress.ip_address(hostname)
+	except ValueError:
+		return url
+	if not address.is_global:
+		raise ValueError("Private or local calendar links are not supported.")
+	return url
+
+
+def _calendar_date(value) -> date:
+	if isinstance(value, datetime):
+		return value.date()
+	return value
+
+
+def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end_date: date) -> list[dict[str, object]]:
+	url = _validate_calendar_url(subscription.url)
+	cache_key = f"calendar-ical:{subscription.pk}:{subscription.url}"
+	payload = cache.get(cache_key)
+	if payload is None:
+		request = Request(url, headers={"User-Agent": "TicketSystem iCal calendar/1.0"})
+		with urlopen(request, timeout=10) as response:
+			payload = response.read(2 * 1024 * 1024 + 1)
+		if len(payload) > 2 * 1024 * 1024:
+			raise ValueError("The calendar feed is too large.")
+		cache.set(cache_key, payload, timeout=900)
+
+	from icalendar import Calendar
+
+	calendar = Calendar.from_ical(payload)
+	events = []
+	for component in calendar.walk("VEVENT"):
+		start_property = component.get("dtstart")
+		if start_property is None:
+			continue
+		start_value = start_property.dt
+		start_day = _calendar_date(start_value)
+		end_property = component.get("dtend")
+		end_value = end_property.dt if end_property is not None else None
+		end_day = _calendar_date(end_value) if end_value is not None else start_day
+		if end_day < start_date or start_day >= end_date:
+			continue
+		uid = str(component.get("uid") or f"{subscription.pk}-{start_value}")
+		event = {
+			"id": f"ical-{subscription.pk}-{uid}",
+			"title": str(component.get("summary") or "(ohne Titel)"),
+			"start": start_value.isoformat(),
+			"allDay": isinstance(start_value, date) and not isinstance(start_value, datetime),
+			"extendedProps": {"calendar": subscription.name},
+		}
+		if end_value is not None:
+			event["end"] = end_value.isoformat()
+		events.append(event)
+	return events
+
+
+@login_required
+def kalender_events(request: HttpRequest) -> JsonResponse:
+	try:
+		start_date = date.fromisoformat((request.GET.get("start") or "")[:10])
+	except ValueError:
+		start_date = timezone.localdate() - timedelta(days=31)
+	try:
+		end_date = date.fromisoformat((request.GET.get("end") or "")[:10])
+	except ValueError:
+		end_date = timezone.localdate() + timedelta(days=366)
+
+	events = []
+	errors = []
+	for subscription in CalendarSubscription.objects.filter(user=request.user):
+		try:
+			events.extend(_fetch_ical_events(subscription, start_date, end_date))
+		except Exception:
+			errors.append(subscription.name)
+	return JsonResponse({"events": events, "errors": errors})
 
 
 def _group_todo_tickets_by_priority(tickets: list[Ticket]) -> list[dict[str, object]]:

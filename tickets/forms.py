@@ -1,7 +1,29 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
-from .models import Ticket, TicketTemplate
+from .models import CalendarSubscription, Ticket, TicketTemplate
+
+
+class CalendarSubscriptionForm(forms.ModelForm):
+    url = forms.CharField(
+        label="iCal URL",
+        widget=forms.URLInput(attrs={"class": "form-control", "placeholder": "https://...", "type": "url"}),
+    )
+
+    class Meta:
+        model = CalendarSubscription
+        fields = ["name", "url"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "z. B. Arbeit"}),
+        }
+
+    def clean_url(self):
+        url = self.cleaned_data["url"].strip()
+        if url.lower().startswith("webcal://"):
+            url = "https://" + url[9:]
+        if not url.lower().startswith(("http://", "https://")):
+            raise forms.ValidationError("Only http, https, and webcal links are supported.")
+        return url
 
 
 class TicketTemplateForm(forms.ModelForm):
