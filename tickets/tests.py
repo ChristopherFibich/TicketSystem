@@ -371,6 +371,32 @@ END:VCALENDAR
 		self.assertEqual(response.json()["events"][0]["title"], "Team meeting")
 		self.assertEqual(response.json()["errors"], [])
 
+	@patch("tickets.views.urlopen")
+	def test_recurring_ical_event_is_expanded_into_visible_range(self, mocked_urlopen):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		CalendarSubscription.objects.create(user=user, name="Recurring", url="https://calendar.example/recurring.ics")
+		feed = b"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:daily-1
+DTSTART:20261101T090000Z
+DTEND:20261101T100000Z
+RRULE:FREQ=DAILY
+SUMMARY:Daily standup
+END:VEVENT
+END:VCALENDAR
+"""
+		mocked_urlopen.return_value.__enter__.return_value.read.return_value = feed
+
+		response = self.client.get(
+			reverse("kalender_events"),
+			{"start": "2026-11-06", "end": "2026-11-09"},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(len(response.json()["events"]), 3)
+
 
 class ScoreboardGraphTests(TestCase):
 	def test_scoreboard_includes_cumulative_points_graph_data(self):

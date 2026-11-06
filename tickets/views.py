@@ -661,11 +661,13 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 			raise ValueError("The calendar feed is too large.")
 		cache.set(cache_key, payload, timeout=900)
 
+	import recurring_ical_events
 	from icalendar import Calendar
 
 	calendar = Calendar.from_ical(payload)
 	events = []
-	for component in calendar.walk("VEVENT"):
+	components = recurring_ical_events.of(calendar, skip_bad_series=True).between(start_date, end_date)
+	for component in components:
 		start_property = component.get("dtstart")
 		if start_property is None:
 			continue

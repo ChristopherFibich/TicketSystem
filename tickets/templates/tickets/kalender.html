@@ -14,6 +14,7 @@
   <div class="calendar-shell">
     <div id="calendar" aria-label="Kalender"></div>
   </div>
+  <div id="calendarFeedStatus" class="alert alert-warning mt-3" role="status" hidden></div>
 
   <div class="calendar-subscriptions mt-3">
     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
@@ -90,6 +91,16 @@
           : { weekday: 'short', day: 'numeric', month: 'numeric' },
         nowIndicator: true,
         events: '{% url "kalender_events" %}',
+        eventSourceSuccess: (payload) => {
+          const status = document.getElementById('calendarFeedStatus');
+          if (payload.errors && payload.errors.length) {
+            status.textContent = `Could not load: ${payload.errors.join(', ')}`;
+            status.hidden = false;
+          } else {
+            status.hidden = true;
+          }
+          return payload.events || [];
+        },
         navLinks: true,
         editable: false,
         selectable: false,
