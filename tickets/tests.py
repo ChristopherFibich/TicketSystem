@@ -344,7 +344,7 @@ class KalenderViewTests(TestCase):
 		self.client.force_login(user)
 		response = self.client.post(
 			reverse("kalender"),
-			{"action": "add_subscription", "name": "Work", "url": "webcal://calendar.example/work.ics"},
+			{"action": "add_subscription", "name": "Work", "url": "webcal://calendar.example/work.ics", "color": "#4285F4"},
 		)
 
 		self.assertRedirects(response, reverse("kalender"))

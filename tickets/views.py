@@ -675,7 +675,7 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 	from icalendar import Calendar
 
 	calendar = Calendar.from_ical(payload)
-	calendar_color = _ical_color(calendar, "COLOR", "X-GOOGLE-CALENDAR-COLOR", "X-APPLE-CALENDAR-COLOR")
+	calendar_color = _ical_color(calendar, "COLOR", "X-GOOGLE-CALENDAR-COLOR", "X-APPLE-CALENDAR-COLOR") or subscription.color
 	events = []
 	components = recurring_ical_events.of(calendar, skip_bad_series=True).between(start_date, end_date)
 	for component in components:

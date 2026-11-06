@@ -500,6 +500,7 @@ class CalendarSubscription(models.Model):
 	)
 	name = models.CharField(max_length=100)
 	url = models.URLField(max_length=1000)
+	color = models.CharField(max_length=7, default="#4285F4")
 	created_at = models.DateTimeField(auto_now_add=True)
 
 	class Meta:

@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 from django.contrib.auth import get_user_model
 
@@ -5,6 +7,10 @@ from .models import CalendarSubscription, Ticket, TicketTemplate
 
 
 class CalendarSubscriptionForm(forms.ModelForm):
+    color = forms.CharField(
+        label="Color",
+        widget=forms.TextInput(attrs={"class": "form-control form-control-color", "type": "color", "title": "Calendar color"}),
+    )
     url = forms.CharField(
         label="iCal URL",
         widget=forms.URLInput(attrs={"class": "form-control", "placeholder": "https://...", "type": "url"}),
@@ -12,7 +18,7 @@ class CalendarSubscriptionForm(forms.ModelForm):
 
     class Meta:
         model = CalendarSubscription
-        fields = ["name", "url"]
+        fields = ["name", "url", "color"]
         widgets = {
             "name": forms.TextInput(attrs={"class": "form-control", "placeholder": "z. B. Arbeit"}),
         }
@@ -24,6 +30,12 @@ class CalendarSubscriptionForm(forms.ModelForm):
         if not url.lower().startswith(("http://", "https://")):
             raise forms.ValidationError("Only http, https, and webcal links are supported.")
         return url
+
+    def clean_color(self):
+        color = self.cleaned_data["color"].strip()
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+            raise forms.ValidationError("Choose a valid six-digit hex color.")
+        return color.upper()
 
 
 class TicketTemplateForm(forms.ModelForm):

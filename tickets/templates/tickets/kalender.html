@@ -32,7 +32,11 @@
         <label class="form-label small" for="{{ subscription_form.url.id_for_label }}">iCal link</label>
         {{ subscription_form.url }}
       </div>
-      <div class="col-12 col-md-2 d-grid">
+      <div class="col-6 col-md-1">
+        <label class="form-label small" for="{{ subscription_form.color.id_for_label }}">Color</label>
+        {{ subscription_form.color }}
+      </div>
+      <div class="col-6 col-md-1 d-grid">
         <button class="btn btn-primary" type="submit">Add calendar</button>
       </div>
       {% for error in subscription_form.url.errors %}<div class="col-12 text-danger small">{{ error }}</div>{% endfor %}
@@ -42,7 +46,7 @@
       <div class="list-group mt-3">
         {% for subscription in subscriptions %}
           <div class="list-group-item d-flex align-items-center justify-content-between gap-2">
-            <div class="text-truncate"><span class="fw-semibold">{{ subscription.name }}</span><span class="small text-body-secondary ms-2">{{ subscription.url }}</span></div>
+            <div class="text-truncate"><span class="calendar-color-dot" style="background: {{ subscription.color }}"></span><span class="fw-semibold">{{ subscription.name }}</span><span class="small text-body-secondary ms-2">{{ subscription.url }}</span></div>
             <form method="post" class="m-0">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_subscription">
@@ -68,6 +72,7 @@
     .fc .fc-timegrid-now-indicator-line { border-color: var(--bs-danger); }
     .fc .fc-timegrid-now-indicator-arrow { border-bottom-color: var(--bs-danger); border-top-color: var(--bs-danger); }
     .calendar-subscriptions { border-top: 1px solid var(--bs-border-color); padding-top: 1rem; }
+    .calendar-color-dot { border-radius: 50%; display: inline-block; height: .75rem; margin-right: .4rem; width: .75rem; }
     @media (max-width: 767.98px) {
       #calendar { min-height: 34rem; padding: .35rem; }
       .fc .fc-toolbar { align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
