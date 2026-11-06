@@ -3,6 +3,14 @@
 {% block title %}Kalender{% endblock %}
 
 {% block content %}
+  <div class="d-flex justify-content-end mb-2">
+    <div class="btn-group" role="group" aria-label="Kalenderansicht">
+      <a class="btn btn-sm {% if mode == 'tag' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=tag&date={{ selected_date|date:'Y-m-d' }}">Tag</a>
+      <a class="btn btn-sm {% if mode == 'woche' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=woche&date={{ selected_date|date:'Y-m-d' }}">Woche</a>
+      <a class="btn btn-sm {% if mode == 'monat' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=monat&date={{ selected_date|date:'Y-m-d' }}">Monat</a>
+    </div>
+  </div>
+
   <div class="calendar-shell">
     <div id="calendar" aria-label="Kalender"></div>
   </div>
@@ -92,18 +100,13 @@
         headerToolbar: {
           left: 'prev,next today',
           center: 'title',
-          right: 'tag,woche,monat',
+          right: '',
         },
         buttonText: {
           today: 'Heute',
           month: 'Monat',
           week: 'Woche',
           day: 'Tag',
-        },
-        customButtons: {
-          tag: { text: 'Tag', click: () => calendar.changeView('timeGridDay') },
-          woche: { text: 'Woche', click: () => calendar.changeView('timeGridWeek') },
-          monat: { text: 'Monat', click: () => calendar.changeView('dayGridMonth') },
         },
         dateClick: (info) => {
           if (calendar.view.type === 'dayGridMonth') {
