@@ -140,11 +140,16 @@
     .fc .fc-timegrid-now-indicator-line { border-color: var(--bs-danger); }
     .fc .fc-timegrid-now-indicator-arrow { border-bottom-color: var(--bs-danger); border-top-color: var(--bs-danger); }
     .calendar-subscriptions { border-top: 1px solid var(--bs-border-color); padding-top: 1rem; }
+    #appointmentModal .modal-dialog { max-height: calc(100dvh - 1rem); }
+    #appointmentModal .modal-content { max-height: calc(100dvh - 1rem); }
+    #appointmentModal .modal-body { max-height: calc(100dvh - 8rem); overflow-y: auto; }
     @media (max-width: 767.98px) {
       #calendar { min-height: 34rem; padding: .35rem; }
       .fc .fc-toolbar { align-items: flex-start; flex-wrap: wrap; gap: .5rem; }
       .fc .fc-toolbar-title { font-size: 1rem; }
       .fc .fc-toolbar-chunk { display: flex; gap: .25rem; }
+      #appointmentModal .modal-dialog { margin: .5rem; max-height: calc(100dvh - 1rem); }
+      #appointmentModal .modal-content { max-height: calc(100dvh - 1rem); }
     }
   </style>
 
