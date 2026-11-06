@@ -53,13 +53,15 @@
               <li class="nav-item"><a class="nav-link" href="{% url 'obsidian' %}">Obsidian</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'all_tickets' %}">All tickets</a></li>
               <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
-              <li class="nav-item"><a class="nav-link" href="{% url 'kalender' %}">Kalender</a></li>
               {% if can_view_graphs %}
                 <li class="nav-item"><a class="nav-link" href="{% url 'graphs' %}">Graphs</a></li>
               {% endif %}
               <li class="nav-item"><a class="nav-link" href="{% url 'einkaufsliste' %}">Einkaufsliste</a></li>
             {% endif %}
             <li class="nav-item"><a class="nav-link" href="{% url 'scoreboard' %}">Scoreboard</a></li>
+            {% if user.is_authenticated %}
+              <li class="nav-item"><a class="nav-link" href="{% url 'kalender' %}">Kalender</a></li>
+            {% endif %}
             {% if user.is_authenticated %}
               {% if user.is_staff or user.is_superuser %}
                 <li class="nav-item"><a class="nav-link" href="/admin/">Admin</a></li>
