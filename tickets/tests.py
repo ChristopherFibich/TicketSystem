@@ -379,6 +379,48 @@ END:VCALENDAR
 		self.assertEqual(events["Christopher appointment"]["backgroundColor"], "#F57C00")
 
 	@patch("tickets.views.urlopen")
+	def test_requested_group_events_are_yellow_and_university_events_are_detected(self, mocked_urlopen):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		CalendarSubscription.objects.create(user=user, name="Groups", url="https://calendar.example/groups.ics")
+		feed = b"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:bo-ki-1
+DTSTART:20261106T090000Z
+DTEND:20261106T100000Z
+SUMMARY:Bo/Ki
+END:VEVENT
+BEGIN:VEVENT
+UID:mma-gra-1
+DTSTART:20261106T110000Z
+DTEND:20261106T120000Z
+SUMMARY:MMA/GRA
+END:VEVENT
+BEGIN:VEVENT
+UID:book-club-1
+DTSTART:20261106T130000Z
+DTEND:20261106T140000Z
+SUMMARY:Book club
+END:VEVENT
+BEGIN:VEVENT
+UID:seminar-1
+DTSTART:20261106T150000Z
+DTEND:20261106T160000Z
+SUMMARY:Seminar PH Lubu
+END:VEVENT
+END:VCALENDAR
+"""
+		mocked_urlopen.return_value.__enter__.return_value.read.return_value = feed
+
+		response = self.client.get(reverse("kalender_events"), {"start": "2026-11-06", "end": "2026-11-07"})
+		events = {event["title"]: event for event in response.json()["events"]}
+
+		for title in ("Bo/Ki", "MMA/GRA", "Book club"):
+			self.assertEqual(events[title]["backgroundColor"], "#FBC02D")
+		self.assertTrue(events["Seminar PH Lubu"]["extendedProps"]["university"])
+
+	@patch("tickets.views.urlopen")
 	def test_webcal_subscription_is_saved_and_events_are_returned(self, mocked_urlopen):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)

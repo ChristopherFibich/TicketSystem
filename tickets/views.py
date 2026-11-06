@@ -661,11 +661,18 @@ def _ical_color(component, *property_names: str) -> str | None:
 
 def _event_name_color(component) -> str | None:
 	text = " ".join(str(component.get(field) or "") for field in ("summary", "description", "location"))
+	if re.search(r"\b(?:bo/ki|mma/gra|book club)\b", text, re.IGNORECASE):
+		return "#FBC02D"
 	if re.search(r"\bshelly\b", text, re.IGNORECASE):
 		return "#7E57C2"
 	if re.search(r"\bchris\w*\b", text, re.IGNORECASE):
 		return "#F57C00"
 	return None
+
+
+def _is_university_event(component) -> bool:
+	text = " ".join(str(component.get(field) or "") for field in ("summary", "description", "location"))
+	return bool(re.search(r"\b(?:university|universität|vorlesung|seminar|uni)\b", text, re.IGNORECASE))
 
 
 def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end_date: date) -> list[dict[str, object]]:
@@ -705,7 +712,7 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 			"title": str(component.get("summary") or "(ohne Titel)"),
 			"start": start_value.isoformat(),
 			"allDay": isinstance(start_value, date) and not isinstance(start_value, datetime),
-			"extendedProps": {"calendar": subscription.name},
+			"extendedProps": {"calendar": subscription.name, "university": _is_university_event(component)},
 		}
 		if event_color:
 			event["backgroundColor"] = event_color
