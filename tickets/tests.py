@@ -310,6 +310,25 @@ class GraphsAccessTests(TestCase):
 		self.assertRedirects(response, reverse("haushalt_tickets"))
 
 
+class KalenderViewTests(TestCase):
+	def test_kalender_shows_month_mode_and_scheduled_ticket(self):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		ticket = Ticket.objects.create(title="Water plants", scheduled_for_date=date(2026, 11, 6))
+
+		response = self.client.get(reverse("kalender"), {"mode": "tag", "date": "2026-11-06"})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Tag")
+		self.assertContains(response, ticket.title)
+		self.assertContains(response, 'href="?mode=woche&date=2026-11-06"')
+
+	def test_kalender_requires_login(self):
+		response = self.client.get(reverse("kalender"))
+
+		self.assertRedirects(response, f"{reverse('login')}?next={reverse('kalender')}")
+
+
 class ScoreboardGraphTests(TestCase):
 	def test_scoreboard_includes_cumulative_points_graph_data(self):
 		alice = User.objects.create_user(username="alice", password="pw")

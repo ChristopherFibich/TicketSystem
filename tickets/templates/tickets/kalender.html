@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Kalender{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h1 class="h4 mb-1">Kalender</h1>
+      <div class="text-body-secondary">{{ selected_date|date:"F Y" }}</div>
+    </div>
+    <div class="btn-group" role="group" aria-label="Kalenderansicht">
+      <a class="btn btn-sm {% if mode == 'tag' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=tag&date={{ selected_date|date:'Y-m-d' }}">Tag</a>
+      <a class="btn btn-sm {% if mode == 'woche' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=woche&date={{ selected_date|date:'Y-m-d' }}">Woche</a>
+      <a class="btn btn-sm {% if mode == 'monat' %}btn-primary{% else %}btn-outline-secondary{% endif %}" href="?mode=monat&date={{ selected_date|date:'Y-m-d' }}">Monat</a>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <a class="btn btn-sm btn-outline-secondary" href="?mode={{ mode }}&date={{ previous_date|date:'Y-m-d' }}" aria-label="Vorheriger Zeitraum">&larr;</a>
+    <a class="btn btn-sm btn-outline-secondary" href="?mode={{ mode }}&date={% now 'Y-m-d' %}">Heute</a>
+    <a class="btn btn-sm btn-outline-secondary" href="?mode={{ mode }}&date={{ next_date|date:'Y-m-d' }}" aria-label="Nächster Zeitraum">&rarr;</a>
+  </div>
+
+  {% if mode != 'tag' %}
+    <div class="calendar-weekdays" aria-hidden="true">
+      <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
+    </div>
+  {% endif %}
+
+  <div class="calendar-grid calendar-grid-{{ mode }}">
+    {% for day in days %}
+      <section class="calendar-day {% if day.is_today %}calendar-day-today{% endif %} {% if mode == 'monat' and not day.is_current_month %}calendar-day-muted{% endif %}">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <a class="calendar-date" href="?mode=tag&date={{ day.date|date:'Y-m-d' }}">{{ day.date|date:'j' }}</a>
+          {% if day.is_today %}<span class="badge text-bg-primary">Heute</span>{% endif %}
+        </div>
+        <div class="d-grid gap-1">
+          {% for ticket in day.tickets %}
+            <a class="calendar-ticket text-decoration-none" href="{% url 'ticket_detail' ticket.pk %}">
+              <span class="fw-semibold">{{ ticket.title }}</span>
+              {% if ticket.assignee %}<span class="small text-body-secondary">{{ ticket.assignee.username }}</span>{% endif %}
+            </a>
+          {% empty %}
+            <span class="small text-body-secondary">Keine Tickets</span>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+
+  <style>
+    .calendar-weekdays,
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .5rem; }
+    .calendar-weekdays { color: var(--bs-secondary-color); font-size: .8rem; font-weight: 600; margin-bottom: .35rem; text-align: center; }
+    .calendar-grid-tag { grid-template-columns: minmax(0, 1fr); }
+    .calendar-grid-woche .calendar-day { min-height: 16rem; }
+    .calendar-grid-monat .calendar-day { min-height: 8rem; }
+    .calendar-day { background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: .375rem; padding: .6rem; }
+    .calendar-day-today { border-color: var(--bs-primary); box-shadow: inset 0 0 0 1px var(--bs-primary); }
+    .calendar-day-muted { opacity: .55; }
+    .calendar-date { color: inherit; font-weight: 600; text-decoration: none; }
+    .calendar-ticket { background: var(--bs-body-bg); border-left: 3px solid var(--bs-primary); border-radius: .25rem; color: inherit; display: flex; flex-direction: column; padding: .3rem .4rem; }
+    @media (max-width: 767.98px) {
+      .calendar-grid-woche, .calendar-grid-monat { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+      .calendar-weekdays { display: none; }
+      .calendar-grid-woche .calendar-day, .calendar-grid-monat .calendar-day { min-height: 6rem; }
+    }
+  </style>
+{% endblock %}

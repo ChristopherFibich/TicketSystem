@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+import calendar as calendar_module
 import json
 import re
 import shutil
@@ -562,6 +563,77 @@ def todo_tickets(request: HttpRequest) -> HttpResponse:
 @login_required
 def all_tickets(request: HttpRequest) -> HttpResponse:
 	return _ticket_list_view(request, include_daily=True, title="All Tickets", heading="All Tickets")
+
+
+def _calendar_month_shift(value: date, months: int) -> date:
+	month_index = value.year * 12 + value.month - 1 + months
+	year, month_index = divmod(month_index, 12)
+	month = month_index + 1
+	return value.replace(year=year, month=month, day=min(value.day, calendar_module.monthrange(year, month)[1]))
+
+
+@login_required
+def kalender(request: HttpRequest) -> HttpResponse:
+	mode = (request.GET.get("mode") or "monat").lower()
+	if mode not in {"tag", "woche", "monat"}:
+		mode = "monat"
+
+	try:
+		selected_date = date.fromisoformat(request.GET.get("date", ""))
+	except ValueError:
+		selected_date = timezone.localdate()
+
+	if mode == "tag":
+		start_date = end_date = selected_date
+		previous_date = selected_date - timedelta(days=1)
+		next_date = selected_date + timedelta(days=1)
+	elif mode == "woche":
+		start_date = selected_date - timedelta(days=selected_date.weekday())
+		end_date = start_date + timedelta(days=6)
+		previous_date = selected_date - timedelta(days=7)
+		next_date = selected_date + timedelta(days=7)
+	else:
+		month_start = selected_date.replace(day=1)
+		start_date = month_start - timedelta(days=month_start.weekday())
+		month_end = selected_date.replace(day=calendar_module.monthrange(selected_date.year, selected_date.month)[1])
+		end_date = month_end + timedelta(days=6 - month_end.weekday())
+		previous_date = _calendar_month_shift(selected_date, -1)
+		next_date = _calendar_month_shift(selected_date, 1)
+
+	tickets = (
+		Ticket.objects.select_related("assignee")
+		.filter(scheduled_for_date__range=(start_date, end_date))
+		.order_by("scheduled_for_date", "status", "title")
+	)
+	tickets_by_date: dict[date, list[Ticket]] = {}
+	for ticket in tickets:
+		if ticket.scheduled_for_date is not None:
+			tickets_by_date.setdefault(ticket.scheduled_for_date, []).append(ticket)
+
+	days = []
+	current_date = start_date
+	while current_date <= end_date:
+		days.append(
+		{
+			"date": current_date,
+			"is_today": current_date == timezone.localdate(),
+			"is_current_month": current_date.month == selected_date.month,
+			"tickets": tickets_by_date.get(current_date, []),
+		}
+		)
+		current_date += timedelta(days=1)
+
+	return render(
+		request,
+		"tickets/kalender.html",
+		{
+			"mode": mode,
+			"selected_date": selected_date,
+			"days": days,
+			"previous_date": previous_date,
+			"next_date": next_date,
+		},
+	)
 
 
 def _group_todo_tickets_by_priority(tickets: list[Ticket]) -> list[dict[str, object]]:
