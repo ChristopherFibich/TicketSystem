@@ -661,11 +661,13 @@ def _ical_color(component, *property_names: str) -> str | None:
 
 def _event_name_color(component) -> str | None:
 	text = " ".join(str(component.get(field) or "") for field in ("summary", "description", "location"))
-	if re.search(r"\b(?:bo/ki|mma/gra|book club)\b", text, re.IGNORECASE):
+	has_shelly = re.search(r"\bshelly\b", text, re.IGNORECASE)
+	has_chris = re.search(r"\bchris\w*\b", text, re.IGNORECASE)
+	if re.search(r"\b(?:bo/ki|mma/gra|book club|warhammer)\b", text, re.IGNORECASE) or (has_shelly and has_chris):
 		return "#FBC02D"
-	if re.search(r"\bshelly\b", text, re.IGNORECASE):
+	if has_shelly:
 		return "#7E57C2"
-	if re.search(r"\bchris\w*\b", text, re.IGNORECASE):
+	if has_chris:
 		return "#F57C00"
 	return None
 

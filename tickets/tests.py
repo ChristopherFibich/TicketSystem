@@ -404,6 +404,18 @@ DTEND:20261106T140000Z
 SUMMARY:Book club
 END:VEVENT
 BEGIN:VEVENT
+UID:warhammer-1
+DTSTART:20261106T140000Z
+DTEND:20261106T150000Z
+SUMMARY:Warhammer
+END:VEVENT
+BEGIN:VEVENT
+UID:both-1
+DTSTART:20261106T150000Z
+DTEND:20261106T160000Z
+SUMMARY:Shelly and Chris together
+END:VEVENT
+BEGIN:VEVENT
 UID:seminar-1
 DTSTART:20261106T150000Z
 DTEND:20261106T160000Z
@@ -416,7 +428,7 @@ END:VCALENDAR
 		response = self.client.get(reverse("kalender_events"), {"start": "2026-11-06", "end": "2026-11-07"})
 		events = {event["title"]: event for event in response.json()["events"]}
 
-		for title in ("Bo/Ki", "MMA/GRA", "Book club"):
+		for title in ("Bo/Ki", "MMA/GRA", "Book club", "Warhammer", "Shelly and Chris together"):
 			self.assertEqual(events[title]["backgroundColor"], "#FBC02D")
 		self.assertTrue(events["Seminar PH Lubu"]["extendedProps"]["university"])
 
