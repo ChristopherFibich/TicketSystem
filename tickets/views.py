@@ -649,6 +649,16 @@ def _calendar_date(value) -> date:
 	return value
 
 
+def _ical_color(component, *property_names: str) -> str | None:
+	for property_name in property_names:
+		value = component.get(property_name)
+		if value is not None:
+			color = str(value).strip()
+			if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
+				return color
+	return None
+
+
 def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end_date: date) -> list[dict[str, object]]:
 	url = _validate_calendar_url(subscription.url)
 	cache_key = f"calendar-ical:{subscription.pk}:{subscription.url}"
@@ -665,6 +675,7 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 	from icalendar import Calendar
 
 	calendar = Calendar.from_ical(payload)
+	calendar_color = _ical_color(calendar, "COLOR", "X-GOOGLE-CALENDAR-COLOR", "X-APPLE-CALENDAR-COLOR")
 	events = []
 	components = recurring_ical_events.of(calendar, skip_bad_series=True).between(start_date, end_date)
 	for component in components:
@@ -679,6 +690,7 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 		if end_day < start_date or start_day >= end_date:
 			continue
 		uid = str(component.get("uid") or f"{subscription.pk}-{start_value}")
+		event_color = _ical_color(component, "COLOR", "X-GOOGLE-EVENT-COLOR", "X-APPLE-EVENT-COLOR") or calendar_color
 		event = {
 			"id": f"ical-{subscription.pk}-{uid}",
 			"title": str(component.get("summary") or "(ohne Titel)"),
@@ -686,6 +698,9 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 			"allDay": isinstance(start_value, date) and not isinstance(start_value, datetime),
 			"extendedProps": {"calendar": subscription.name},
 		}
+		if event_color:
+			event["backgroundColor"] = event_color
+			event["borderColor"] = event_color
 		if end_value is not None:
 			event["end"] = end_value.isoformat()
 		events.append(event)
