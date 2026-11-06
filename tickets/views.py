@@ -618,7 +618,7 @@ def kalender(request: HttpRequest) -> HttpResponse:
 			"selected_date": selected_date,
 			"calendar_view": calendar_view,
 			"subscription_form": form,
-			"subscriptions": CalendarSubscription.objects.filter(user=request.user),
+			"subscriptions": CalendarSubscription.objects.all(),
 		},
 	)
 
@@ -720,7 +720,7 @@ def kalender_events(request: HttpRequest) -> JsonResponse:
 
 	events = []
 	errors = []
-	for subscription in CalendarSubscription.objects.filter(user=request.user):
+	for subscription in CalendarSubscription.objects.all():
 		try:
 			events.extend(_fetch_ical_events(subscription, start_date, end_date))
 		except Exception:

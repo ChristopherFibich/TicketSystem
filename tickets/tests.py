@@ -338,6 +338,17 @@ class KalenderViewTests(TestCase):
 
 		self.assertRedirects(response, f"{reverse('login')}?next={reverse('kalender')}")
 
+	def test_calendar_subscription_is_shared_with_all_users(self):
+		owner = User.objects.create_user(username="alice", password="pw")
+		other_user = User.objects.create_user(username="bob", password="pw")
+		CalendarSubscription.objects.create(user=owner, name="Shared", url="https://calendar.example/shared.ics")
+		self.client.force_login(other_user)
+
+		response = self.client.get(reverse("kalender"))
+
+		self.assertContains(response, "Shared")
+		self.assertNotContains(response, 'value="delete_subscription"')
+
 	@patch("tickets.views.urlopen")
 	def test_webcal_subscription_is_saved_and_events_are_returned(self, mocked_urlopen):
 		user = User.objects.create_user(username="alice", password="pw")

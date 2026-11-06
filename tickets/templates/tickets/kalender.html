@@ -44,10 +44,12 @@
           <div class="list-group-item d-flex align-items-center justify-content-between gap-2">
             <div class="text-truncate"><span class="fw-semibold">{{ subscription.name }}</span><span class="small text-body-secondary ms-2">{{ subscription.url }}</span></div>
             <form method="post" class="m-0">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="delete_subscription">
-              <input type="hidden" name="subscription_id" value="{{ subscription.pk }}">
-              <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+              {% if subscription.user_id == user.id %}
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_subscription">
+                <input type="hidden" name="subscription_id" value="{{ subscription.pk }}">
+                <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+              {% endif %}
             </form>
           </div>
         {% endfor %}
