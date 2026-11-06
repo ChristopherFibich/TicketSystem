@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from django import forms
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -49,8 +47,6 @@ class CalendarAppointmentForm(forms.Form):
         if ends_at and timezone.is_naive(ends_at):
             ends_at = timezone.make_aware(ends_at, timezone.get_current_timezone())
             cleaned_data["ends_at"] = ends_at
-        if starts_at and starts_at < timezone.now() + timedelta(days=2):
-            self.add_error("starts_at", "Appointments must be planned at least two days in advance.")
         if starts_at and ends_at and ends_at <= starts_at:
             self.add_error("ends_at", "The end must be after the start.")
         return cleaned_data

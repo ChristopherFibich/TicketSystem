@@ -391,7 +391,7 @@ class KalenderViewTests(TestCase):
 		self.assertEqual(published_event["extendedProps"]["attendees"], "alice, bob")
 		self.assertEqual(published_event["extendedProps"]["notes"], "Bring the board games.")
 
-	def test_appointment_must_be_planned_two_days_ahead(self):
+	def test_appointment_can_be_planned_for_the_next_day(self):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)
 		starts_at = timezone.localtime(timezone.now()) + timedelta(days=1)
@@ -406,9 +406,8 @@ class KalenderViewTests(TestCase):
 			},
 		)
 
-		self.assertEqual(response.status_code, 200)
-		self.assertContains(response, "at least two days in advance")
-		self.assertFalse(CalendarEvent.objects.exists())
+		self.assertRedirects(response, reverse("kalender"))
+		self.assertTrue(CalendarEvent.objects.filter(title="Too soon").exists())
 
 	def test_appointment_cannot_overlap_existing_internal_event(self):
 		user = User.objects.create_user(username="alice", password="pw")
