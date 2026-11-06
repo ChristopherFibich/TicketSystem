@@ -659,6 +659,15 @@ def _ical_color(component, *property_names: str) -> str | None:
 	return None
 
 
+def _event_name_color(component) -> str | None:
+	text = " ".join(str(component.get(field) or "") for field in ("summary", "description", "location"))
+	if re.search(r"\bshelly\b", text, re.IGNORECASE):
+		return "#7E57C2"
+	if re.search(r"\bchris\w*\b", text, re.IGNORECASE):
+		return "#F57C00"
+	return None
+
+
 def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end_date: date) -> list[dict[str, object]]:
 	url = _validate_calendar_url(subscription.url)
 	cache_key = f"calendar-ical:{subscription.pk}:{subscription.url}"
@@ -690,7 +699,7 @@ def _fetch_ical_events(subscription: CalendarSubscription, start_date: date, end
 		if end_day < start_date or start_day >= end_date:
 			continue
 		uid = str(component.get("uid") or f"{subscription.pk}-{start_value}")
-		event_color = _ical_color(component, "COLOR", "X-GOOGLE-EVENT-COLOR", "X-APPLE-EVENT-COLOR") or calendar_color
+		event_color = _event_name_color(component) or _ical_color(component, "COLOR", "X-GOOGLE-EVENT-COLOR", "X-APPLE-EVENT-COLOR") or calendar_color
 		event = {
 			"id": f"ical-{subscription.pk}-{uid}",
 			"title": str(component.get("summary") or "(ohne Titel)"),

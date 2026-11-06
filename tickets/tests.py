@@ -350,6 +350,35 @@ class KalenderViewTests(TestCase):
 		self.assertNotContains(response, 'value="delete_subscription"')
 
 	@patch("tickets.views.urlopen")
+	def test_event_names_get_requested_colors(self, mocked_urlopen):
+		user = User.objects.create_user(username="alice", password="pw")
+		self.client.force_login(user)
+		CalendarSubscription.objects.create(user=user, name="People", url="https://calendar.example/people.ics")
+		feed = b"""BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+UID:shelly-1
+DTSTART:20261106T090000Z
+DTEND:20261106T100000Z
+SUMMARY:Shelly appointment
+END:VEVENT
+BEGIN:VEVENT
+UID:chris-1
+DTSTART:20261106T110000Z
+DTEND:20261106T120000Z
+SUMMARY:Christopher appointment
+END:VEVENT
+END:VCALENDAR
+"""
+		mocked_urlopen.return_value.__enter__.return_value.read.return_value = feed
+
+		response = self.client.get(reverse("kalender_events"), {"start": "2026-11-06", "end": "2026-11-07"})
+		events = {event["title"]: event for event in response.json()["events"]}
+
+		self.assertEqual(events["Shelly appointment"]["backgroundColor"], "#7E57C2")
+		self.assertEqual(events["Christopher appointment"]["backgroundColor"], "#F57C00")
+
+	@patch("tickets.views.urlopen")
 	def test_webcal_subscription_is_saved_and_events_are_returned(self, mocked_urlopen):
 		user = User.objects.create_user(username="alice", password="pw")
 		self.client.force_login(user)
