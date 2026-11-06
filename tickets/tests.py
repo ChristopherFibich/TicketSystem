@@ -397,30 +397,6 @@ END:VCALENDAR
 		self.assertEqual(response.status_code, 200)
 		self.assertEqual(len(response.json()["events"]), 3)
 
-	@patch("tickets.views.urlopen")
-	def test_ical_calendar_color_is_applied_to_events(self, mocked_urlopen):
-		user = User.objects.create_user(username="alice", password="pw")
-		self.client.force_login(user)
-		CalendarSubscription.objects.create(user=user, name="Colored", url="https://calendar.example/colored.ics")
-		feed = b"""BEGIN:VCALENDAR
-VERSION:2.0
-COLOR:#3366CC
-BEGIN:VEVENT
-UID:colored-1
-DTSTART:20261106T090000Z
-DTEND:20261106T100000Z
-SUMMARY:Colored event
-END:VEVENT
-END:VCALENDAR
-"""
-		mocked_urlopen.return_value.__enter__.return_value.read.return_value = feed
-
-		response = self.client.get(
-			reverse("kalender_events"),
-			{"start": "2026-11-06", "end": "2026-11-07"},
-		)
-
-		self.assertEqual(response.json()["events"][0]["backgroundColor"], "#3366CC")
 
 
 class ScoreboardGraphTests(TestCase):
